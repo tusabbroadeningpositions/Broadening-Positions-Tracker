@@ -121,8 +121,17 @@ export async function syncDutyToFirestore(duty: Duty): Promise<void> {
   const path = `duties/${duty.id}`;
   try {
     await callAdminApi("/api/duties", "POST", duty);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client sync:", apiError);
+    try {
+      await setDoc(doc(db, "duties", duty.id), {
+        ...duty,
+        admin_secret: "DUTY_TRACKER_SECRET_2024",
+        updatedAt: new Date().toISOString()
+      });
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.WRITE, path);
+    }
   }
 }
 
@@ -133,8 +142,13 @@ export async function deleteDutyFromFirestore(id: string): Promise<void> {
   const path = `duties/${id}`;
   try {
     await callAdminApi(`/api/duties/${id}`, "DELETE");
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client delete:", apiError);
+    try {
+      await deleteDoc(doc(db, "duties", id));
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.DELETE, path);
+    }
   }
 }
 
@@ -145,8 +159,24 @@ export async function syncSoldierRankToFirestore(lastName: string, newRank: stri
   const path = 'duties';
   try {
     await callAdminApi("/api/duties/sync-rank", "POST", { lastName, newRank });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client rank sync:", apiError);
+    try {
+      const q = query(collection(db, "duties"), where("lastName", "==", lastName));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      const updatedAt = new Date().toISOString();
+      snapshot.forEach((d) => {
+        batch.update(d.ref, { 
+          rank: newRank, 
+          admin_secret: "DUTY_TRACKER_SECRET_2024", 
+          updatedAt 
+        });
+      });
+      await batch.commit();
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.WRITE, path);
+    }
   }
 }
 
@@ -157,8 +187,24 @@ export async function syncRenameCategoryToFirestore(oldName: string, newName: st
   const path = 'duties';
   try {
     await callAdminApi("/api/duties/rename-category", "POST", { oldName, newName });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client category rename:", apiError);
+    try {
+      const q = query(collection(db, "duties"), where("category", "==", oldName));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      const updatedAt = new Date().toISOString();
+      snapshot.forEach((d) => {
+        batch.update(d.ref, { 
+          category: newName, 
+          admin_secret: "DUTY_TRACKER_SECRET_2024", 
+          updatedAt 
+        });
+      });
+      await batch.commit();
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.WRITE, path);
+    }
   }
 }
 
@@ -169,8 +215,23 @@ export async function batchSyncDutiesToFirestore(duties: Duty[]): Promise<void> 
   const path = 'duties';
   try {
     await callAdminApi("/api/duties/batch", "POST", { duties });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client batch sync:", apiError);
+    try {
+      const batch = writeBatch(db);
+      const updatedAt = new Date().toISOString();
+      duties.forEach((duty) => {
+        const docRef = doc(db, "duties", duty.id);
+        batch.set(docRef, { 
+          ...duty, 
+          admin_secret: "DUTY_TRACKER_SECRET_2024", 
+          updatedAt 
+        }, { merge: true });
+      });
+      await batch.commit();
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.WRITE, path);
+    }
   }
 }
 

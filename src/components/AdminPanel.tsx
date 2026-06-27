@@ -225,14 +225,6 @@ export default function AdminPanel({
                 )}
               </div>
 
-              {/* Password Help Box */}
-              <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-start space-x-2">
-                <FileJson className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                <div className="text-[11px] text-slate-400 leading-relaxed">
-                  <span className="font-bold text-slate-300">Credential Note:</span> The passkey is set to <span className="font-mono bg-slate-900 px-1 py-0.5 rounded border border-slate-800 text-emerald-400 font-semibold">dutytracker</span> for development review.
-                </div>
-              </div>
-
               {/* Submit Buttons */}
               <div className="flex items-center justify-end space-x-2 pt-2">
                 <button

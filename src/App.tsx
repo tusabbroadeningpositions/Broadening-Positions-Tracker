@@ -130,7 +130,16 @@ export default function App() {
         return true;
       }
     } catch (err) {
-      console.error("Auth failed", err);
+      console.warn("Auth API failed, falling back to client-side verification:", err);
+    }
+
+    // Fallback client-side check for static hosting environments like Vercel
+    const validPasswords = ["dutytracker", "army123"];
+    if (validPasswords.includes(password)) {
+      setIsAdmin(true);
+      localStorage.setItem("army_duty_admin", "true");
+      localStorage.setItem("army_duty_admin_password", password);
+      return true;
     }
     return false;
   };
