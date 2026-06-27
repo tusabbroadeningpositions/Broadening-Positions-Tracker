@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Duty": {
+      "title": "Duty",
+      "description": "A collateral duty assignment for a soldier.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "lastName": { "type": "string" },
+        "rank": { "type": "string" },
+        "dateStarted": { "type": "string" },
+        "termLength": { "type": "string" },
+        "termEndDate": { "type": "string" },
+        "elementOrGroup": { "type": "string" },
+        "tierLevel": { "type": "number" },
+        "specialized": { "type": "boolean" },
+        "dutyType": { "type": "string", "enum": ["EL", "U", "N/A"] },
+        "isCommandAppointed": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "jobTitle", "lastName", "rank", "elementOrGroup", "dutyType"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "User with administrative privileges.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/duties/{dutyId}": {
+      "schema": "Duty",
+      "description": "Collection of all broadening and collateral duties."
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of authorized admins."
+    }
+  }
+}

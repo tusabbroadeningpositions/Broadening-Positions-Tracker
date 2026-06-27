@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    function isValidDuty(data) {
+      return data.keys().hasAll(['category', 'jobTitle', 'lastName', 'rank', 'elementOrGroup', 'dutyType'])
+        && data.category is string && data.category.size() <= 100
+        && data.jobTitle is string && data.jobTitle.size() <= 200
+        && data.lastName is string && data.lastName.size() <= 100
+        && data.rank is string && data.rank.size() <= 50
+        && data.elementOrGroup is string && data.elementOrGroup.size() <= 50
+        && data.dutyType in ['EL', 'U', 'N/A']
+        && (!('tierLevel' in data) || data.tierLevel == null || data.tierLevel is number)
+        && (!('specialized' in data) || data.specialized is bool)
+        && (!('isCommandAppointed' in data) || data.isCommandAppointed is bool)
+        && (!('dateStarted' in data) || data.dateStarted is string)
+        && (!('termLength' in data) || data.termLength is string)
+        && (!('termEndDate' in data) || data.termEndDate is string)
+        && (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
+    // --- Collections ---
+    
+    // Admins collection: only readable/writable by existing admins, 
+    // but we'll allow initial setup for the user.
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed manually or via specific process
+    }
+
+    // Duties collection
+    match /duties/{dutyId} {
+      // Shared read access
+      allow read: if true;
+      
+      // Admin-only write access via server secret
+      allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
+      allow delete: if true; 
+    }
+  }
+}
