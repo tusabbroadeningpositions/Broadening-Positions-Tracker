@@ -209,6 +209,29 @@ export async function syncRenameCategoryToFirestore(oldName: string, newName: st
 }
 
 /**
+ * Firestore Sync: Delete Category (Deletes all duties in that category)
+ */
+export async function syncDeleteCategoryToFirestore(categoryName: string): Promise<void> {
+  const path = 'duties';
+  try {
+    await callAdminApi("/api/duties/delete-category", "POST", { categoryName });
+  } catch (apiError) {
+    console.warn("API call failed, falling back to direct Firestore client category delete:", apiError);
+    try {
+      const q = query(collection(db, "duties"), where("category", "==", categoryName));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    } catch (fsError) {
+      handleFirestoreError(fsError, OperationType.DELETE, path);
+    }
+  }
+}
+
+/**
  * Firestore Sync: Bulk add/update duties
  */
 export async function batchSyncDutiesToFirestore(duties: Duty[]): Promise<void> {

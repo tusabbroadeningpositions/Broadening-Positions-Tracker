@@ -17,7 +17,8 @@ import {
   deleteDutyFromFirestore,
   syncSoldierRankToFirestore,
   syncRenameCategoryToFirestore,
-  batchSyncDutiesToFirestore
+  batchSyncDutiesToFirestore,
+  syncDeleteCategoryToFirestore
 } from "./data/dutiesStore";
 import { db } from "./lib/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
@@ -181,6 +182,11 @@ export default function App() {
     await syncRenameCategoryToFirestore(oldName, newName);
   };
 
+  // Delete a category and all its duties
+  const handleDeleteCategory = async (categoryName: string) => {
+    await syncDeleteCategoryToFirestore(categoryName);
+  };
+
   // Import custom backup file
   const handleImportJSON = async (importedDuties: Duty[]) => {
     try {
@@ -228,6 +234,7 @@ export default function App() {
         onAddDuty={handleTriggerAdd}
         onImportJSON={handleImportJSON}
         onRenameCategory={handleRenameCategory}
+        onDeleteCategory={handleDeleteCategory}
         allDuties={duties}
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}

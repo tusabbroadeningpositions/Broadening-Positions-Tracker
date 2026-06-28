@@ -22,7 +22,7 @@ export default function DutyFormModal({
   const [category, setCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [lastName, setLastName] = useState("");
-  const [rank, setRank] = useState("");
+  const [rank, setRank] = useState("SSG");
   const [dateStarted, setDateStarted] = useState("");
   const [termLength, setTermLength] = useState("");
   const [termEndDate, setTermEndDate] = useState("");
@@ -61,7 +61,7 @@ export default function DutyFormModal({
       setCategory("");
       setJobTitle("");
       setLastName("");
-      setRank("");
+      setRank("SSG");
       setDateStarted("");
       setTermLength("2-5 yrs");
       setTermEndDate("");
@@ -148,6 +148,44 @@ export default function DutyFormModal({
   };
 
   const workloadInfo = getWorkloadImpact();
+
+  const calculateAndSetEndDate = (start: string, tier: string) => {
+    if (!start || tier === "N/A") return;
+    const yearsToAdd = tier === "1" ? 5 : tier === "2" ? 6 : tier === "3" ? 7 : 0;
+    if (yearsToAdd === 0) return;
+
+    const dateParts = start.split('/');
+    if (dateParts.length === 3) {
+      const m = dateParts[0];
+      const d = dateParts[1];
+      const yearStr = dateParts[2].trim();
+      let year = parseInt(yearStr, 10);
+      if (!isNaN(year)) {
+        if (yearStr.length === 2) year += (year > 50 ? 1900 : 2000);
+        setTermEndDate(`${m}/${d}/${year + yearsToAdd}`);
+      }
+    } else if (/^\d{4}$/.test(start.trim())) {
+      const year = parseInt(start.trim(), 10);
+      setTermEndDate(String(year + yearsToAdd));
+    }
+  };
+
+  const handleTierChange = (val: string) => {
+    setTierLevel(val);
+    if (val === "1") {
+      setTermLength("2-5 yrs");
+    } else if (val === "2") {
+      setTermLength("2-6 yrs");
+    } else if (val === "3") {
+      setTermLength("3-7 yrs");
+    }
+    calculateAndSetEndDate(dateStarted, val);
+  };
+
+  const handleDateStartedChange = (val: string) => {
+    setDateStarted(val);
+    calculateAndSetEndDate(val, tierLevel);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,14 +374,12 @@ export default function DutyFormModal({
                 disabled={lastName.trim().toUpperCase() === "VACANT"}
                 onChange={(e) => setRank(e.target.value)}
               >
-                <option value="">N/A / CIV</option>
-                <option value="SGM">SGM</option>
-                <option value="CSM">CSM</option>
-                <option value="MSG">MSG</option>
-                <option value="SFC">SFC</option>
                 <option value="SSG">SSG</option>
-                <option value="SGT">SGT</option>
-                <option value="SPC">SPC</option>
+                <option value="SFC">SFC</option>
+                <option value="MSG">MSG</option>
+                <option value="SGM">SGM</option>
+                <option value="CIV">CIV</option>
+                <option value="N/A">N/A</option>
               </select>
             </div>
 
@@ -357,7 +393,7 @@ export default function DutyFormModal({
                 className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium"
                 placeholder="e.g. 1/4/24 or 2021"
                 value={dateStarted}
-                onChange={(e) => setDateStarted(e.target.value)}
+                onChange={(e) => handleDateStartedChange(e.target.value)}
               />
             </div>
 
@@ -418,17 +454,7 @@ export default function DutyFormModal({
               <select
                 className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium"
                 value={tierLevel}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setTierLevel(val);
-                  if (val === "1") {
-                    setTermLength("2-5 yrs");
-                  } else if (val === "2") {
-                    setTermLength("2-6 yrs");
-                  } else if (val === "3") {
-                    setTermLength("3-7 yrs");
-                  }
-                }}
+                onChange={(e) => handleTierChange(e.target.value)}
               >
                 <option value="N/A">N/A / None</option>
                 <option value="1">Tier 1 (Value: 1)</option>

@@ -11,6 +11,7 @@ interface AdminPanelProps {
   onAddDuty: () => void;
   onImportJSON: (duties: Duty[]) => void;
   onRenameCategory: (oldName: string, newName: string) => void;
+  onDeleteCategory: (categoryName: string) => void;
   allDuties: Duty[];
   showLoginModal: boolean;
   setShowLoginModal: (show: boolean) => void;
@@ -26,6 +27,7 @@ export default function AdminPanel({
   showLoginModal,
   setShowLoginModal,
   onRenameCategory,
+  onDeleteCategory,
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -232,6 +234,7 @@ export default function AdminPanel({
         onClose={() => setShowCategoryManager(false)}
         duties={allDuties}
         onRenameCategory={onRenameCategory}
+        onDeleteCategory={onDeleteCategory}
       />
 
       {/* Login Modal - Triggered from Header */}

@@ -140,6 +140,26 @@ async function startServer() {
       }
   });
 
+  expressApp.post("/api/duties/delete-category", checkAdminAuth, async (req, res) => {
+      try {
+        const { categoryName } = req.body;
+        console.log("Deleting all duties in category:", categoryName);
+        const q = query(collection(db, "duties"), where("category", "==", categoryName));
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        
+        snapshot.forEach((d) => {
+          batch.delete(d.ref);
+        });
+        
+        await batch.commit();
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Firestore Error in /api/duties/delete-category:", error);
+        res.status(500).json({ error: error.message });
+      }
+  });
+
   // Vite Middleware
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

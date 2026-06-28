@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Edit2, Check, Tag, Info } from "lucide-react";
+import { X, Edit2, Check, Tag, Info, Trash2 } from "lucide-react";
 import { Duty } from "../types";
 import { getUniqueCategories } from "../data/dutiesStore";
 
@@ -8,6 +8,7 @@ interface CategoryManagerModalProps {
   onClose: () => void;
   duties: Duty[];
   onRenameCategory: (oldName: string, newName: string) => void;
+  onDeleteCategory: (categoryName: string) => void;
 }
 
 export default function CategoryManagerModal({
@@ -15,6 +16,7 @@ export default function CategoryManagerModal({
   onClose,
   duties,
   onRenameCategory,
+  onDeleteCategory,
 }: CategoryManagerModalProps) {
   const [categories, setCategories] = useState<string[]>([]);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -39,6 +41,15 @@ export default function CategoryManagerModal({
       onRenameCategory(oldName, trimmed);
     }
     setEditingCategory(null);
+  };
+
+  const handleDeleteClick = (cat: string) => {
+    const dutyCount = duties.filter(d => d.category === cat).length;
+    const warning = `Are you sure you want to delete the "${cat}" shop?\n\nThis will PERMANENTLY DELETE all ${dutyCount} positions within this shop.\n\nThis action cannot be undone.`;
+    
+    if (window.confirm(warning)) {
+      onDeleteCategory(cat);
+    }
   };
 
   return (
@@ -118,13 +129,22 @@ export default function CategoryManagerModal({
                         {duties.filter(d => d.category === cat).length} Assignments
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleStartEdit(cat)}
-                      className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded transition-all opacity-0 group-hover:opacity-100"
-                      title="Rename shop"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStartEdit(cat)}
+                        className="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                        title="Rename shop"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(cat)}
+                        className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete shop and all positions"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
