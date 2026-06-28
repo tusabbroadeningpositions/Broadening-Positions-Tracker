@@ -13,9 +13,10 @@ interface StatCardProps {
   icon: React.ReactNode;
   colorClass: string;
   bgColorClass: string;
+  barColorClass: string;
 }
 
-const StatCard = ({ title, value, total, icon, colorClass, bgColorClass }: StatCardProps) => {
+const StatCard = ({ title, value, total, icon, colorClass, bgColorClass, barColorClass }: StatCardProps) => {
   const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
   
   return (
@@ -40,7 +41,7 @@ const StatCard = ({ title, value, total, icon, colorClass, bgColorClass }: StatC
 
       <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2">
         <div 
-          className={`h-full ${bgColorClass.replace('/20', '')} transition-all duration-1000 ease-out`}
+          className={`h-full ${barColorClass} transition-all duration-1000 ease-out`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -87,12 +88,13 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Classification Stats */}
         <StatCard 
-          title="EL Positions (Extended)"
+          title="EL Positions (Element)"
           value={stats.el}
           total={stats.total}
           icon={<Zap className="w-5 h-5" />}
           colorClass="text-sky-400"
           bgColorClass="bg-sky-500/20"
+          barColorClass="bg-sky-500"
         />
         <StatCard 
           title="U Positions (Unit)"
@@ -101,6 +103,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<Users className="w-5 h-5" />}
           colorClass="text-indigo-400"
           bgColorClass="bg-indigo-500/20"
+          barColorClass="bg-indigo-500"
         />
         
         {/* Tier Stats */}
@@ -111,6 +114,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<Target className="w-5 h-5" />}
           colorClass="text-emerald-400"
           bgColorClass="bg-emerald-500/20"
+          barColorClass="bg-emerald-500"
         />
         <StatCard 
           title="Tier 2 Positions"
@@ -119,6 +123,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<Shield className="w-5 h-5" />}
           colorClass="text-amber-400"
           bgColorClass="bg-amber-500/20"
+          barColorClass="bg-amber-500"
         />
         <StatCard 
           title="Tier 3 Positions"
@@ -127,6 +132,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<Award className="w-5 h-5" />}
           colorClass="text-orange-400"
           bgColorClass="bg-orange-500/20"
+          barColorClass="bg-orange-500"
         />
 
         {/* Special Designations */}
@@ -137,6 +143,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<ClipboardList className="w-5 h-5" />}
           colorClass="text-rose-400"
           bgColorClass="bg-rose-500/20"
+          barColorClass="bg-rose-500"
         />
         <StatCard 
           title="Spec/Title Positions"
@@ -145,6 +152,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           icon={<Award className="w-5 h-5" />}
           colorClass="text-violet-400"
           bgColorClass="bg-violet-500/20"
+          barColorClass="bg-violet-500"
         />
       </div>
 

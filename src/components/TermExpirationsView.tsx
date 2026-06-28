@@ -113,7 +113,7 @@ export default function TermExpirationsView({ duties, searchQuery }: TermExpirat
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-sm font-mono border border-slate-700">
-                          {duty.dutyType === 'EL' ? 'Extended' : duty.dutyType === 'U' ? 'Unit' : 'N/A'}
+                          {duty.dutyType === 'EL' ? 'Element' : duty.dutyType === 'U' ? 'Unit' : 'N/A'}
                         </span>
                       </td>
                     </tr>

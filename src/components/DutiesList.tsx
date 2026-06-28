@@ -331,12 +331,8 @@ export default function DutiesList({
         <div className="flex flex-wrap items-center gap-4 mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-slate-400">
           <span className="font-bold text-slate-300 uppercase tracking-wider">Legend:</span>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 bg-sky-950/40 border border-sky-800/50 rounded-sm"></span>
-            <span>Blue Highlight = Command Appointed Duties</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 bg-slate-950/20 border border-slate-900 rounded-sm"></span>
-            <span>Vacant Position</span>
+            <span className="inline-block w-2.5 h-2.5 bg-amber-500/20 border border-amber-500/40 rounded-sm"></span>
+            <span>Gold Highlight = Command Appointed Duties</span>
           </div>
         </div>
       </div>
@@ -448,7 +444,11 @@ export default function DutiesList({
                       <tr 
                         key={duty.id} 
                         className={`hover:bg-slate-850/50 transition-all duration-75 ${
-                          isVacant ? "bg-slate-950/20" : ""
+                          duty.isCommandAppointed 
+                            ? "bg-amber-500/10 border-y border-amber-500/20" 
+                            : isVacant 
+                            ? "bg-slate-950/20" 
+                            : ""
                         }`}
                         onDoubleClick={() => isAdmin && onEditDuty(duty)}
                       >
@@ -460,13 +460,13 @@ export default function DutiesList({
                         <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span className={`text-sm leading-tight block rounded-sm ${
                             duty.isCommandAppointed 
-                              ? "text-sky-300 font-extrabold bg-sky-950/40 border border-sky-900/50 px-1.5 py-0.5"
+                              ? "text-amber-400 font-extrabold bg-amber-950/40 border border-amber-900/50 px-1.5 py-0.5"
                               : "text-slate-200 font-bold"
                           }`}>
                             {duty.jobTitle}
                           </span>
                           {duty.isCommandAppointed && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-extrabold bg-blue-900/80 text-blue-100 rounded-sm border border-blue-700/60 uppercase tracking-wider">
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-extrabold bg-amber-600/80 text-amber-50 rounded-sm border border-amber-500/60 uppercase tracking-wider">
                               Cmd Appt
                             </span>
                           )}
@@ -496,10 +496,10 @@ export default function DutiesList({
                             onClick={() => handleFilterChange(setTierFilter, String(duty.tierLevel))}
                             className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-bold font-mono border cursor-pointer transition-colors ${
                               duty.tierLevel === 3
-                                ? "bg-rose-950 text-rose-300 border-rose-900/60 hover:text-rose-200 hover:border-rose-700"
+                                ? "bg-amber-400/20 text-amber-400 border-amber-400/40 hover:bg-amber-400/30" // Gold
                                 : duty.tierLevel === 2
-                                ? "bg-slate-800 text-slate-200 border-slate-700 hover:text-white hover:border-slate-500"
-                                : "bg-emerald-950 text-emerald-300 border-emerald-900/60 hover:text-emerald-200 hover:border-emerald-700"
+                                ? "bg-slate-400/20 text-slate-300 border-slate-400/40 hover:bg-slate-400/30" // Silver
+                                : "bg-orange-900/30 text-orange-400 border-orange-800/40 hover:bg-orange-900/40" // Bronze
                             }`}
                             title={`Filter by Tier ${duty.tierLevel}`}
                           >

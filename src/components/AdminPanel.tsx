@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag } from "lucide-react";
+import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Duty } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
 
@@ -99,6 +100,62 @@ export default function AdminPanel({
     }
   };
 
+  const handleExportExcel = () => {
+    try {
+      // Sorting Logic:
+      // 1. Shop (Category) Alphabetical
+      // 2. Tier Level Descending (3, 2, 1, null)
+      const sortedDuties = [...allDuties].sort((a, b) => {
+        // Primary: Category
+        const catA = a.category || "";
+        const catB = b.category || "";
+        if (catA < catB) return -1;
+        if (catA > catB) return 1;
+
+        // Secondary: Tier Level (Descending: 3, 2, 1, null)
+        const tierA = a.tierLevel ?? -1;
+        const tierB = b.tierLevel ?? -1;
+        return tierB - tierA;
+      });
+
+      // Map to Excel-friendly format
+      const excelData = sortedDuties.map(d => ({
+        "Shop (Category)": d.category,
+        "Job Title": d.jobTitle,
+        "Last Name": d.lastName,
+        "Rank": d.rank,
+        "Element/Group": d.elementOrGroup,
+        "Tier": d.tierLevel ?? "N/A",
+        "Duty Type": d.dutyType === 'EL' ? 'Element' : d.dutyType === 'U' ? 'Unit' : 'N/A',
+        "Command Appointed": d.isCommandAppointed ? "Yes" : "No",
+        "Date Started": d.dateStarted,
+        "Term Length": d.termLength,
+        "Term End Date": d.termEndDate,
+        "Specialized": d.specialized ? "Yes" : "No"
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Duties");
+
+      // Auto-size columns (basic approximation)
+      const maxColWidths = excelData.reduce((acc, row) => {
+        Object.keys(row).forEach((key, i) => {
+          const val = String(row[key as keyof typeof row] || "");
+          acc[i] = Math.max(acc[i] || 0, val.length, key.length);
+        });
+        return acc;
+      }, [] as number[]);
+      worksheet["!cols"] = maxColWidths.map(w => ({ wch: w + 2 }));
+
+      const timestamp = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(workbook, `army_collateral_duties_${timestamp}.xlsx`);
+    } catch (err) {
+      console.error("Excel Export Error:", err);
+      alert("Failed to export Excel file.");
+    }
+  };
+
   return (
     <>
       {/* Admin Utility Bar - Visible ONLY when logged in */}
@@ -131,6 +188,16 @@ export default function AdminPanel({
               >
                 <Tag className="w-3.5 h-3.5 text-sky-400" />
                 <span>Manage Shops</span>
+              </button>
+
+              {/* Export Excel */}
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-200 border border-emerald-800/50 rounded text-xs font-semibold shadow-sm transition duration-150"
+                title="Export all data to Excel spreadsheet"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Export Spreadsheet</span>
               </button>
 
               {/* Export JSON */}

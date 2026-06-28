@@ -477,11 +477,11 @@ export default function DutyFormModal({
             {/* Command Appointed Toggle */}
             <div className="md:col-span-2 flex items-center justify-between p-3 bg-slate-950/40 rounded border border-slate-850">
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-sky-300">
+                <span className="text-xs font-bold text-amber-400">
                   Command Appointed Position (Cmd Appt)
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  Highlight this position as Command Appointed (marked with a blue badge and background).
+                  Highlight this position as Command Appointed (marked with a gold badge and row background).
                 </span>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
@@ -491,7 +491,7 @@ export default function DutyFormModal({
                   onChange={(e) => setIsCommandAppointed(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
               </label>
             </div>
 
