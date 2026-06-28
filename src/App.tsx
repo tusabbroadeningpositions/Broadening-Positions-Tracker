@@ -105,14 +105,11 @@ export default function App() {
       }
     });
 
-    const overloadedCount = soldierSummaries.filter(s => s.isOverloaded).length;
-
     return {
       total,
       vacancies,
-      overloadedCount,
     };
-  }, [duties, soldierSummaries]);
+  }, [duties]);
 
   // Admin Login Verification
   const handleLogin = async (password: string): Promise<boolean> => {
@@ -219,7 +216,6 @@ export default function App() {
         onAdminClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         totalDutiesCount={metrics.total}
-        overloadedCount={metrics.overloadedCount}
         vacanciesCount={metrics.vacancies}
         isLoading={loading}
       />

@@ -10,7 +10,6 @@ interface HeaderProps {
   onAdminClick: () => void;
   onLogout: () => void;
   totalDutiesCount: number;
-  overloadedCount: number;
   vacanciesCount: number;
   isLoading?: boolean;
 }
@@ -24,7 +23,6 @@ export default function Header({
   onAdminClick,
   onLogout,
   totalDutiesCount,
-  overloadedCount,
   vacanciesCount,
   isLoading = false,
 }: HeaderProps) {
@@ -52,12 +50,6 @@ export default function Header({
             <div className="px-3 border-r border-slate-800">
               <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total Duties</span>
               <span className="text-sm font-semibold text-white">{totalDutiesCount}</span>
-            </div>
-            <div className="px-3 border-r border-slate-800">
-              <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Overloaded Staff</span>
-              <span className="text-sm font-semibold text-rose-500 flex items-center gap-1">
-                {overloadedCount > 0 ? "●" : "○"} {overloadedCount}
-              </span>
             </div>
             <div className="px-3">
               <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Vacant Positions</span>

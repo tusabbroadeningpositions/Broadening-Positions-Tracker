@@ -1,5 +1,5 @@
 {
-  "name": "Remix: Broadening Positions Tracker",
+  "name": "Broadening Positions Tracker",
   "description": "A comprehensive tracker for military broadening positions and staff workload. Features a password-secured admin mode for cross-device management and real-time statistics.",
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
