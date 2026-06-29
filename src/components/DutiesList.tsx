@@ -27,6 +27,7 @@ export default function DutiesList({
   const [scopeFilter, setScopeFilter] = useState("All"); // All, EL, U, N/A
   const [expirationFilter, setExpirationFilter] = useState("All"); // All, Expired, Expiring, Active
   const [commandFilter, setCommandFilter] = useState("All"); // All, Yes, No
+  const [personnelFilter, setPersonnelFilter] = useState("All");
 
   // Infinite Scroll States
   const [visibleCount, setVisibleCount] = useState(25);
@@ -40,6 +41,17 @@ export default function DutiesList({
       if (d.category) cats.add(d.category);
     });
     return Array.from(cats).sort();
+  }, [duties]);
+
+  const uniquePersonnel = useMemo(() => {
+    const names = new Set<string>();
+    duties.forEach(d => {
+      const name = d.lastName.trim();
+      if (name && name.toUpperCase() !== "VACANT") {
+        names.add(name);
+      }
+    });
+    return Array.from(names).sort();
   }, [duties]);
 
   const uniqueElements = useMemo(() => {
@@ -141,7 +153,13 @@ export default function DutiesList({
         matchesCommand = commandFilter === "Yes" ? !!duty.isCommandAppointed : !duty.isCommandAppointed;
       }
 
-      return matchesSearch && matchesCategory && matchesElement && matchesTier && matchesScope && matchesExpiration && matchesCommand;
+      // 8. Personnel Filter
+      let matchesPersonnel = true;
+      if (personnelFilter !== "All") {
+        matchesPersonnel = duty.lastName.toLowerCase() === personnelFilter.toLowerCase();
+      }
+
+      return matchesSearch && matchesCategory && matchesElement && matchesTier && matchesScope && matchesExpiration && matchesCommand && matchesPersonnel;
     });
 
     // Sorting Logic: 
@@ -167,12 +185,12 @@ export default function DutiesList({
       const nameB = b.lastName || "";
       return nameA.localeCompare(nameB);
     });
-  }, [duties, searchQuery, categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter]);
+  }, [duties, searchQuery, categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, personnelFilter]);
 
   // Reset visible count on any filter or query change
   useEffect(() => {
     setVisibleCount(25);
-  }, [categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, searchQuery]);
+  }, [categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, searchQuery, personnelFilter]);
 
   // Setup intersection observer for infinite scroll
   useEffect(() => {
@@ -213,6 +231,7 @@ export default function DutiesList({
     setScopeFilter("All");
     setExpirationFilter("All");
     setCommandFilter("All");
+    setPersonnelFilter("All");
     setVisibleCount(25);
   };
 
@@ -254,12 +273,29 @@ export default function DutiesList({
       }
     }
 
+    const isFiltered = personnelFilter.toLowerCase() === lastName.toLowerCase();
+
     return (
       <div className="flex items-center space-x-2">
         <span className="text-slate-300 font-mono text-xs font-semibold uppercase bg-slate-950 px-1.5 py-0.5 rounded-sm border border-slate-800">
           {rank || "N/A"}
         </span>
-        <span className="font-semibold text-slate-200 text-sm">{lastName}</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isFiltered) {
+              setPersonnelFilter("All");
+            } else {
+              setPersonnelFilter(lastName);
+            }
+          }}
+          className={`font-semibold text-sm transition-all text-left hover:text-emerald-400 hover:underline cursor-pointer ${
+            isFiltered ? "text-emerald-400 underline font-extrabold" : "text-slate-200"
+          }`}
+          title={isFiltered ? "Click to clear filter" : `Click to show all positions occupied by ${lastName}`}
+        >
+          {lastName}
+        </button>
         <span 
           className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border transition-all ${badgeColorClass}`}
           title={badgeTooltip}
@@ -279,7 +315,7 @@ export default function DutiesList({
             <Layers className="w-4 h-4 text-emerald-500" />
             <h3 className="text-xs font-bold uppercase tracking-wider">Roster Filter Console</h3>
           </div>
-          {(categoryFilter !== "All" || elementFilter !== "All" || tierFilter !== "All" || scopeFilter !== "All" || expirationFilter !== "All" || commandFilter !== "All") && (
+          {(categoryFilter !== "All" || elementFilter !== "All" || tierFilter !== "All" || scopeFilter !== "All" || expirationFilter !== "All" || commandFilter !== "All" || personnelFilter !== "All") && (
             <button
               onClick={handleClearFilters}
               className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
@@ -323,6 +359,28 @@ export default function DutiesList({
               <option value="All">All Appointment Types</option>
               <option value="Yes">Command Appointed Only ({duties.filter(d => d.isCommandAppointed).length})</option>
               <option value="No">Standard Duties Only ({duties.filter(d => !d.isCommandAppointed).length})</option>
+            </select>
+          </div>
+
+          {/* Personnel Filter */}
+          <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+              Personnel Focus
+            </label>
+            <select
+              className="w-full text-xs border border-slate-750 rounded p-2 bg-slate-950 text-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+              value={personnelFilter}
+              onChange={(e) => handleFilterChange(setPersonnelFilter, e.target.value)}
+            >
+              <option value="All">All Personnel ({uniquePersonnel.length})</option>
+              {uniquePersonnel.map((name) => {
+                const count = duties.filter(d => d.lastName.toLowerCase() === name.toLowerCase()).length;
+                return (
+                  <option key={name} value={name} className="text-slate-300 bg-slate-950 font-normal">
+                    {name} ({count} {count === 1 ? 'position' : 'positions'})
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
