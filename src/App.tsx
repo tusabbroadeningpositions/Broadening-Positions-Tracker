@@ -39,12 +39,14 @@ export default function App() {
 
   // Admin authorization states
   const [isAdmin, setIsAdmin] = useState(false);
+  const [allowedCategory, setAllowedCategory] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Modal editor states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDuty, setEditingDuty] = useState<Duty | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [myShopTrigger, setMyShopTrigger] = useState(0);
 
   // On mount, restore admin session if active
   useEffect(() => {
@@ -56,8 +58,13 @@ export default function App() {
 
     const sessionAdmin = localStorage.getItem("army_duty_admin");
     const sessionPassword = localStorage.getItem("army_duty_admin_password");
+    const sessionCategory = localStorage.getItem("army_duty_admin_category");
+    
     if (sessionAdmin === "true" && sessionPassword) {
       setIsAdmin(true);
+    }
+    if (sessionCategory) {
+      setAllowedCategory(sessionCategory.trim());
     }
   }, []);
 
@@ -97,7 +104,8 @@ export default function App() {
   }, [duties]);
 
   const metrics = useMemo(() => {
-    let total = duties.length;
+    // Metrics remain global so users see the total roster state
+    const total = duties.length;
     let vacancies = 0;
     
     duties.forEach(d => {
@@ -114,23 +122,49 @@ export default function App() {
 
   // Admin Login Verification
   const handleLogin = async (password: string): Promise<boolean> => {
-    // Client-side check for static hosting environments like GitHub Pages
-    // Note: For production use, you would typically use Firebase Authentication
-    const validPasswords = ["dutytracker", "army123"];
-    if (validPasswords.includes(password)) {
+    // Master passwords (Full Access)
+    const masterPasswords = ["dutytracker", "army123"];
+    
+    // Shop-specific passwords (Category-only Access)
+    const SHOP_PASSWORDS: Record<string, string> = {
+      "CM123": "Ceremonial Band",
+      "CT123": "Concert Band",
+      "DR123": "Downrange",
+      "BL123": "Blues",
+      "ST123": "Strings",
+      "TSG123": "Technical Support Group",
+      "CH123": "Chorus"
+    };
+
+    if (masterPasswords.includes(password)) {
       setIsAdmin(true);
+      setAllowedCategory(null);
       localStorage.setItem("army_duty_admin", "true");
       localStorage.setItem("army_duty_admin_password", password);
+      localStorage.removeItem("army_duty_admin_category");
       return true;
     }
+
+    if (SHOP_PASSWORDS[password]) {
+      const category = SHOP_PASSWORDS[password].trim();
+      setIsAdmin(false); // Not a full admin
+      setAllowedCategory(category);
+      localStorage.setItem("army_duty_admin", "false");
+      localStorage.setItem("army_duty_admin_password", password);
+      localStorage.setItem("army_duty_admin_category", category);
+      return true;
+    }
+
     return false;
   };
 
   // Admin Logout
   const handleLogout = () => {
     setIsAdmin(false);
+    setAllowedCategory(null);
     localStorage.removeItem("army_duty_admin");
     localStorage.removeItem("army_duty_admin_password");
+    localStorage.removeItem("army_duty_admin_category");
   };
 
   // Create or Update Duty handler
@@ -202,7 +236,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        isAdmin={isAdmin}
+        isAdmin={isAdmin || !!allowedCategory}
         onAdminClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         totalDutiesCount={metrics.total}
@@ -213,6 +247,7 @@ export default function App() {
       {/* Admin Quick Action Panel */}
       <AdminPanel
         isAdmin={isAdmin}
+        allowedCategory={allowedCategory}
         onLogin={handleLogin}
         onLogout={handleLogout}
         onAddDuty={handleTriggerAdd}
@@ -222,6 +257,7 @@ export default function App() {
         allDuties={duties}
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}
+        onShowMyShop={() => setMyShopTrigger(prev => prev + 1)}
       />
 
       {/* Main Content Area */}
@@ -233,9 +269,12 @@ export default function App() {
             duties={duties}
             soldierSummaries={soldierSummaries}
             isAdmin={isAdmin}
+            allowedCategory={allowedCategory}
             onEditDuty={handleTriggerEdit}
             onDeleteDuty={handleDeleteDuty}
             searchQuery={searchQuery}
+            onClearSearch={() => setSearchQuery("")}
+            myShopTrigger={myShopTrigger}
           />
         )}
 
@@ -264,6 +303,7 @@ export default function App() {
         onSave={handleSaveDuty}
         editingDuty={editingDuty}
         allDuties={duties}
+        allowedCategory={allowedCategory}
       />
 
       {/* Visual Instruction / Footnote Footer */}

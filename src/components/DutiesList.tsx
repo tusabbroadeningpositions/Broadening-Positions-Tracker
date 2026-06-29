@@ -1,24 +1,32 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Duty, SoldierSummary } from "../types";
 import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
-import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw } from "lucide-react";
+import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface DutiesListProps {
   duties: Duty[];
   soldierSummaries: SoldierSummary[];
   isAdmin: boolean;
+  allowedCategory: string | null;
   onEditDuty: (duty: Duty) => void;
   onDeleteDuty: (id: string) => void;
   searchQuery: string;
+  onClearSearch?: () => void;
+  myShopTrigger?: number;
 }
 
 export default function DutiesList({
   duties,
   soldierSummaries,
   isAdmin,
+  allowedCategory,
   onEditDuty,
   onDeleteDuty,
   searchQuery,
+  onClearSearch,
+  myShopTrigger,
 }: DutiesListProps) {
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -92,6 +100,33 @@ export default function DutiesList({
     setVisibleCount(25);
   };
 
+  // Set default filter if shop admin logs in (once per session/change)
+  const lastAllowedCategoryRef = useRef<string | null>(null);
+  const lastTriggerRef = useRef(myShopTrigger);
+
+  useEffect(() => {
+    const triggerChanged = myShopTrigger !== lastTriggerRef.current;
+    // If we have an authorized category and (haven't set it yet OR manual trigger was clicked)
+    if (allowedCategory && (allowedCategory !== lastAllowedCategoryRef.current || triggerChanged)) {
+      // Find the actual category that STARTS with the allowed name (fuzzy match for complex names)
+      const matchingCat = uniqueCategories.find(
+        cat => (cat || "").trim().toLowerCase().startsWith(allowedCategory.trim().toLowerCase())
+      );
+      
+      if (matchingCat) {
+        setCategoryFilter(matchingCat);
+        setVisibleCount(25);
+        lastAllowedCategoryRef.current = allowedCategory;
+        lastTriggerRef.current = myShopTrigger;
+      } else if (uniqueCategories.length > 0 && uniqueCategories.some(c => c !== "All")) {
+        // If we have data but no match, default to All and mark as done to avoid infinite attempts
+        setCategoryFilter("All");
+        lastAllowedCategoryRef.current = allowedCategory;
+        lastTriggerRef.current = myShopTrigger;
+      }
+    }
+  }, [allowedCategory, uniqueCategories, myShopTrigger]);
+
   // Filter & Search Logic
   const filteredDuties = useMemo(() => {
     const result = duties.filter((duty) => {
@@ -99,15 +134,16 @@ export default function DutiesList({
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         searchQuery === "" ||
-        duty.jobTitle.toLowerCase().includes(q) ||
-        duty.lastName.toLowerCase().includes(q) ||
-        duty.category.toLowerCase().includes(q) ||
-        duty.rank.toLowerCase().includes(q) ||
-        duty.elementOrGroup.toLowerCase().includes(q);
+        (duty.jobTitle || "").toLowerCase().includes(q) ||
+        (duty.lastName || "").toLowerCase().includes(q) ||
+        (duty.category || "").toLowerCase().includes(q) ||
+        (duty.rank || "").toLowerCase().includes(q) ||
+        (duty.elementOrGroup || "").toLowerCase().includes(q);
 
       // 2. Category Filter
       let matchesCategory = true;
       if (categoryFilter !== "All") {
+        // Use direct equality for the filter dropdown selection
         matchesCategory = duty.category === categoryFilter;
       }
 
@@ -232,7 +268,110 @@ export default function DutiesList({
     setExpirationFilter("All");
     setCommandFilter("All");
     setPersonnelFilter("All");
+    if (onClearSearch) onClearSearch();
     setVisibleCount(25);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Add professional header
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); // Slate-900
+    doc.text('Broadening Positions Roster', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateStr = new Date().toLocaleString();
+    doc.text(`Export Date: ${dateStr}`, 14, 28);
+    
+    // Display active filters
+    const activeFilters = [];
+    if (categoryFilter !== "All") activeFilters.push(`Shop: ${categoryFilter}`);
+    if (elementFilter !== "All") activeFilters.push(`Element: ${elementFilter}`);
+    if (tierFilter !== "All") activeFilters.push(`Tier: ${tierFilter}`);
+    if (scopeFilter !== "All") activeFilters.push(`Scope: ${scopeFilter}`);
+    if (searchQuery) activeFilters.push(`Search: "${searchQuery}"`);
+    
+    if (activeFilters.length > 0) {
+      doc.text(`Applied Filters: ${activeFilters.join(' | ')}`, 14, 33);
+    } else {
+      doc.text('Filters: All (Full Roster)', 14, 33);
+    }
+    
+    const tableData = filteredDuties.map(duty => {
+      const summary = soldierSummaryMap.get((duty.lastName || "").toLowerCase());
+      const tierAgg = summary ? summary.tierAggregate : 0;
+      const termStatus = getTermExpirationStatus(duty.termEndDate, duty.lastName);
+      
+      return [
+        duty.category || '',
+        duty.jobTitle || '',
+        duty.rank || '',
+        (duty.lastName || '').toUpperCase() === 'VACANT' ? 'VACANT' : duty.lastName,
+        duty.elementOrGroup || '',
+        duty.tierLevel !== null ? duty.tierLevel.toString() : 'N/A',
+        duty.dutyType || 'N/A',
+        tierAgg.toString(),
+        `${termStatus.toUpperCase()}${duty.termEndDate ? ` (${duty.termEndDate})` : ''}`,
+        duty.isCommandAppointed ? 'YES' : 'NO'
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['SHOP', 'JOB TITLE', 'RANK', 'LAST NAME', 'ELEM', 'POS TIER', 'SCOPE', 'TIER AGG', 'TERM STATUS', 'CMD APPT']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [15, 23, 42], // Slate-900
+        textColor: [255, 255, 255],
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      styles: { 
+        fontSize: 7, 
+        cellPadding: 2,
+        valign: 'middle'
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 50 },
+        2: { halign: 'center', cellWidth: 15 },
+        3: { fontStyle: 'bold' },
+        4: { halign: 'center', cellWidth: 15 },
+        5: { halign: 'center', cellWidth: 15 },
+        6: { halign: 'center', cellWidth: 15 },
+        7: { halign: 'center', cellWidth: 15, fontStyle: 'bold' },
+        8: { halign: 'center', cellWidth: 35 },
+        9: { halign: 'center', cellWidth: 15 }
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252] // Slate-50
+      },
+      margin: { top: 40 }
+    });
+
+    // Add footer with page numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${i} of ${pageCount} - Confidential - Authorized Personnel Only`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`Broadening_Roster_Export_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Render Rank + Name cell with overload indicators
@@ -315,7 +454,7 @@ export default function DutiesList({
             <Layers className="w-4 h-4 text-emerald-500" />
             <h3 className="text-xs font-bold uppercase tracking-wider">Roster Filter Console</h3>
           </div>
-          {(categoryFilter !== "All" || elementFilter !== "All" || tierFilter !== "All" || scopeFilter !== "All" || expirationFilter !== "All" || commandFilter !== "All" || personnelFilter !== "All") && (
+          {(categoryFilter !== "All" || elementFilter !== "All" || tierFilter !== "All" || scopeFilter !== "All" || expirationFilter !== "All" || commandFilter !== "All" || personnelFilter !== "All" || searchQuery !== "") && (
             <button
               onClick={handleClearFilters}
               className="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
@@ -324,13 +463,22 @@ export default function DutiesList({
               Clear Filters ({filteredDuties.length} items found)
             </button>
           )}
+          
+          <button
+            onClick={handleExportPDF}
+            className="ml-auto text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95"
+            disabled={filteredDuties.length === 0}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export Filtered PDF
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Shop Filter */}
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-              Shop
+              Shop {allowedCategory && "(Auth Session Active)"}
             </label>
             <select
               className="w-full text-xs border border-slate-750 rounded p-2 bg-slate-950 text-slate-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer"
@@ -486,7 +634,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                {isAdmin && (
+                {(isAdmin || !!allowedCategory) && (
                   <th scope="col" className="px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider">
                     Actions
                   </th>
@@ -497,7 +645,10 @@ export default function DutiesList({
               {visibleDuties.length > 0 ? (
                 <>
                   {visibleDuties.map((duty) => {
-                    const isVacant = duty.lastName.toUpperCase() === "VACANT";
+                    const isVacant = (duty.lastName || "").toUpperCase() === "VACANT";
+                    const dutyCat = (duty.category || "").trim().toLowerCase();
+                    const authPrefix = (allowedCategory || "").trim().toLowerCase();
+                    const canEdit = isAdmin || (!!allowedCategory && dutyCat.startsWith(authPrefix));
                     return (
                       <tr 
                         key={duty.id} 
@@ -508,7 +659,7 @@ export default function DutiesList({
                             ? "bg-slate-950/20" 
                             : ""
                         }`}
-                        onDoubleClick={() => isAdmin && onEditDuty(duty)}
+                        onDoubleClick={() => canEdit && onEditDuty(duty)}
                       >
                       {/* Job / Position Title */}
                       <td className="px-6 py-4">
@@ -662,43 +813,49 @@ export default function DutiesList({
                       </td>
 
                       {/* Admin Actions */}
-                      {isAdmin && (
+                      {(isAdmin || !!allowedCategory) && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
-                          {deletingId === duty.id ? (
-                            <div className="flex items-center justify-end space-x-1.5 animate-pulse bg-rose-950/20 px-2 py-1 rounded border border-rose-900/40">
-                              <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Delete?</span>
-                              <button
-                                onClick={() => {
-                                  onDeleteDuty(duty.id);
-                                  setDeletingId(null);
-                                }}
-                                className="bg-rose-600 hover:bg-rose-500 text-white rounded px-2 py-0.5 text-[9px] font-bold cursor-pointer transition-colors"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => setDeletingId(null)}
-                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-700 cursor-pointer transition-colors"
-                              >
-                                No
-                              </button>
-                            </div>
+                          {canEdit ? (
+                            deletingId === duty.id ? (
+                              <div className="flex items-center justify-end space-x-1.5 animate-pulse bg-rose-950/20 px-2 py-1 rounded border border-rose-900/40">
+                                <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Delete?</span>
+                                <button
+                                  onClick={() => {
+                                    onDeleteDuty(duty.id);
+                                    setDeletingId(null);
+                                  }}
+                                  className="bg-rose-600 hover:bg-rose-500 text-white rounded px-2 py-0.5 text-[9px] font-bold cursor-pointer transition-colors"
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  onClick={() => setDeletingId(null)}
+                                  className="bg-slate-800 hover:bg-slate-750 text-slate-300 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-700 cursor-pointer transition-colors"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => onEditDuty(duty)}
+                                  className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
+                                  title="Edit duty assignment"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingId(duty.id)}
+                                  className="text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
+                                  title="Delete duty assignment"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )
                           ) : (
-                            <div className="flex items-center justify-end space-x-2">
-                              <button
-                                onClick={() => onEditDuty(duty)}
-                                className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
-                                title="Edit duty assignment"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeletingId(duty.id)}
-                                className="text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
-                                title="Delete duty assignment"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <div className="flex justify-end pr-2">
+                              <BadgeInfo className="w-4 h-4 text-slate-700" title="Unauthorized for this shop" />
                             </div>
                           )}
                         </td>
@@ -708,7 +865,7 @@ export default function DutiesList({
                 })}
                 {visibleCount < filteredDuties.length && (
                   <tr ref={sentinelRef} className="bg-slate-950/10">
-                    <td colSpan={isAdmin ? 7 : 6} className="px-6 py-4 text-center">
+                    <td colSpan={isAdmin || !!allowedCategory ? 7 : 6} className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center space-x-2 text-xs text-slate-400 font-medium font-mono py-2">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
                         <span>LOADING MORE BROADENING POSITIONS...</span>
@@ -718,7 +875,7 @@ export default function DutiesList({
                 )}
               </>) : (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={isAdmin || !!allowedCategory ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-slate-600" />
                       <p className="text-sm font-semibold text-slate-400">No broadening positions found matching your filters.</p>

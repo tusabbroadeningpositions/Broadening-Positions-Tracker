@@ -10,6 +10,7 @@ interface DutyFormModalProps {
   onSave: (duty: Omit<Duty, "id"> & { id?: string }) => void;
   editingDuty?: Duty | null;
   allDuties: Duty[];
+  allowedCategory: string | null;
 }
 
 export default function DutyFormModal({
@@ -18,6 +19,7 @@ export default function DutyFormModal({
   onSave,
   editingDuty,
   allDuties,
+  allowedCategory,
 }: DutyFormModalProps) {
   const [category, setCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -58,7 +60,15 @@ export default function DutyFormModal({
       setIsCommandAppointed(editingDuty.isCommandAppointed ?? isCommandAppointedDuty(editingDuty.category, editingDuty.jobTitle));
     } else {
       // Set sensible defaults for a new duty
-      setCategory("");
+      let initialCategory = allowedCategory || "";
+      if (allowedCategory) {
+        // Try to find the full name in combinedShops that matches the prefix
+        const fullShop = combinedShops.find(s => s.trim().toLowerCase().startsWith(allowedCategory.trim().toLowerCase()));
+        if (fullShop) {
+          initialCategory = fullShop;
+        }
+      }
+      setCategory(initialCategory);
       setJobTitle("");
       setLastName("");
       setRank("SSG");
@@ -93,14 +103,40 @@ export default function DutyFormModal({
 
   // Dynamically compute the combined list of unique shops
   const combinedShops = React.useMemo(() => {
+    const defaultShops = [
+      "Ceremonial Band",
+      "Concert Band",
+      "Downrange",
+      "Blues",
+      "Strings",
+      "Technical Support Group",
+      "Chorus",
+      "Operations",
+      "Logistics",
+      "Administration"
+    ];
     const cats = new Set<string>();
+    
+    // 1. Add existing categories from the roster (highest priority)
     allDuties.forEach(d => {
-      if (d.category) {
+      if (d.category && d.category.trim()) {
         cats.add(d.category.trim());
       }
     });
+
+    // 2. Add custom shops
     customShops.forEach(cs => {
       if (cs.trim()) cats.add(cs.trim());
+    });
+
+    // 3. Add default shops ONLY if they aren't already represented by a more specific name
+    defaultShops.forEach(s => {
+      const exists = Array.from(cats).some(existing => 
+        existing.toLowerCase().startsWith(s.toLowerCase())
+      );
+      if (!exists) {
+        cats.add(s);
+      }
     });
     if (category) {
       cats.add(category.trim());
@@ -287,11 +323,12 @@ export default function DutyFormModal({
             {/* Shop Dropdown */}
             <div className="relative md:col-span-2">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Shop *
+                Shop * {allowedCategory && "(Locked to Authorized Section)"}
               </label>
               <select
                 required
-                className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium cursor-pointer"
+                disabled={!!allowedCategory}
+                className={`w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium ${!!allowedCategory ? 'opacity-70 cursor-not-allowed bg-slate-900' : 'cursor-pointer'}`}
                 value={category}
                 onChange={(e) => {
                   if (e.target.value === "CREATE_NEW_SHOP") {
@@ -302,15 +339,17 @@ export default function DutyFormModal({
                   }
                 }}
               >
-                <option value="" disabled>-- Select a Shop --</option>
+                {!allowedCategory && <option value="" disabled>-- Select a Shop --</option>}
                 {combinedShops.map((shop) => (
                   <option key={shop} value={shop}>
                     {shop}
                   </option>
                 ))}
-                <option value="CREATE_NEW_SHOP" className="text-emerald-400 font-bold bg-slate-900">
-                  + Create New Shop...
-                </option>
+                {!allowedCategory && (
+                  <option value="CREATE_NEW_SHOP" className="text-emerald-400 font-bold bg-slate-900">
+                    + Create New Shop...
+                  </option>
+                )}
               </select>
             </div>
 

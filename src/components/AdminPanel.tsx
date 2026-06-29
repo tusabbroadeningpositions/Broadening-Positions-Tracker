@@ -6,12 +6,14 @@ import CategoryManagerModal from "./CategoryManagerModal";
 
 interface AdminPanelProps {
   isAdmin: boolean;
+  allowedCategory: string | null;
   onLogin: (password: string) => Promise<boolean> | boolean;
   onLogout: () => void;
   onAddDuty: () => void;
   onImportJSON: (duties: Duty[]) => void;
   onRenameCategory: (oldName: string, newName: string) => void;
   onDeleteCategory: (categoryName: string) => void;
+  onShowMyShop?: () => void;
   allDuties: Duty[];
   showLoginModal: boolean;
   setShowLoginModal: (show: boolean) => void;
@@ -19,6 +21,7 @@ interface AdminPanelProps {
 
 export default function AdminPanel({
   isAdmin,
+  allowedCategory,
   onLogin,
   onLogout,
   onAddDuty,
@@ -28,6 +31,7 @@ export default function AdminPanel({
   setShowLoginModal,
   onRenameCategory,
   onDeleteCategory,
+  onShowMyShop,
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -161,14 +165,21 @@ export default function AdminPanel({
   return (
     <>
       {/* Admin Utility Bar - Visible ONLY when logged in */}
-      {isAdmin && (
+      {(isAdmin || !!allowedCategory) && (
         <div className="bg-slate-900/60 border-b border-slate-800/80 py-3.5 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-2 text-slate-100">
               <Shield className="w-5 h-5 text-emerald-500 fill-emerald-500/10 shrink-0" />
               <div>
-                <p className="text-sm font-bold tracking-tight">Administrative Suite Enabled</p>
-                <p className="text-[11px] text-slate-400">You have write authorization. Double-click or click action buttons to edit.</p>
+                <p className="text-sm font-bold tracking-tight">
+                  {isAdmin ? "Administrative Suite Enabled" : `Shop Admin: ${allowedCategory}`}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {isAdmin 
+                    ? "You have full write authorization. Double-click or click action buttons to edit."
+                    : `Authorized for ${allowedCategory} shop only. You can edit entries within your section.`
+                  }
+                </p>
               </div>
             </div>
 
@@ -183,14 +194,28 @@ export default function AdminPanel({
                 <span>Assign New Duty</span>
               </button>
 
+              {/* My Shop Quick Filter */}
+              {allowedCategory && (
+                <button
+                  onClick={onShowMyShop}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold shadow-sm transition duration-150"
+                  title={`Quick filter for ${allowedCategory} shop`}
+                >
+                  <Eye className="w-4 h-4 text-white" />
+                  <span>My Shop</span>
+                </button>
+              )}
+
               {/* Manage Shops */}
-              <button
-                onClick={() => setShowCategoryManager(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-900/40 hover:bg-sky-800/60 text-sky-200 border border-sky-800/50 rounded text-xs font-semibold shadow-sm transition duration-150"
-              >
-                <Tag className="w-3.5 h-3.5 text-sky-400" />
-                <span>Manage Shops</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowCategoryManager(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-900/40 hover:bg-sky-800/60 text-sky-200 border border-sky-800/50 rounded text-xs font-semibold shadow-sm transition duration-150"
+                >
+                  <Tag className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Manage Shops</span>
+                </button>
+              )}
 
               {/* Export Excel */}
               <button
@@ -203,26 +228,30 @@ export default function AdminPanel({
               </button>
 
               {/* Export JSON */}
-              <button
-                onClick={handleExportJSON}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-750 rounded text-xs font-semibold transition duration-150"
-                title="Export active roster as JSON backup"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export Backup</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={handleExportJSON}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-750 rounded text-xs font-semibold transition duration-150"
+                  title="Export active roster as JSON backup"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export Backup</span>
+                </button>
+              )}
 
               {/* Import JSON */}
-              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-750 rounded text-xs font-semibold cursor-pointer transition duration-150">
-                <Upload className="w-3.5 h-3.5" />
-                <span>Import Backup</span>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
+              {isAdmin && (
+                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-750 rounded text-xs font-semibold cursor-pointer transition duration-150">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Import Backup</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
           </div>
         </div>
