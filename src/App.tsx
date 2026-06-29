@@ -114,24 +114,8 @@ export default function App() {
 
   // Admin Login Verification
   const handleLogin = async (password: string): Promise<boolean> => {
-    try {
-      const response = await fetch("/api/verify-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-
-      if (response.ok) {
-        setIsAdmin(true);
-        localStorage.setItem("army_duty_admin", "true");
-        localStorage.setItem("army_duty_admin_password", password);
-        return true;
-      }
-    } catch (err) {
-      console.warn("Auth API failed, falling back to client-side verification:", err);
-    }
-
-    // Fallback client-side check for static hosting environments like Vercel
+    // Client-side check for static hosting environments like GitHub Pages
+    // Note: For production use, you would typically use Firebase Authentication
     const validPasswords = ["dutytracker", "army123"];
     if (validPasswords.includes(password)) {
       setIsAdmin(true);

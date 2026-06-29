@@ -64,7 +64,8 @@ service cloud.firestore {
       allow read: if true;
       
       // Admin-only write access via server secret
-      allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
+      allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
+                           && isValidDuty(request.resource.data);
       allow delete: if true; 
     }
   }

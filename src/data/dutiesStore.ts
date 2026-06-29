@@ -91,47 +91,18 @@ export function saveDuties(duties: Duty[]): void {
 }
 
 /**
- * Helper to call the admin API with password from localStorage
- */
-async function callAdminApi(endpoint: string, method: string, body?: any) {
-  const password = localStorage.getItem("army_duty_admin_password");
-  if (!password) throw new Error("Not logged in as admin");
-
-  const response = await fetch(endpoint, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Admin-Password": password
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `API error: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
  * Firestore Sync: Add or Update a duty
  */
 export async function syncDutyToFirestore(duty: Duty): Promise<void> {
   const path = `duties/${duty.id}`;
   try {
-    await callAdminApi("/api/duties", "POST", duty);
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client sync:", apiError);
-    try {
-      await setDoc(doc(db, "duties", duty.id), {
-        ...duty,
-        admin_secret: "DUTY_TRACKER_SECRET_2024",
-        updatedAt: new Date().toISOString()
-      });
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.WRITE, path);
-    }
+    await setDoc(doc(db, "duties", duty.id), {
+      ...duty,
+      admin_secret: "DUTY_TRACKER_SECRET_2024",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
   }
 }
 
@@ -141,14 +112,9 @@ export async function syncDutyToFirestore(duty: Duty): Promise<void> {
 export async function deleteDutyFromFirestore(id: string): Promise<void> {
   const path = `duties/${id}`;
   try {
-    await callAdminApi(`/api/duties/${id}`, "DELETE");
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client delete:", apiError);
-    try {
-      await deleteDoc(doc(db, "duties", id));
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.DELETE, path);
-    }
+    await deleteDoc(doc(db, "duties", id));
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.DELETE, path);
   }
 }
 
@@ -158,25 +124,20 @@ export async function deleteDutyFromFirestore(id: string): Promise<void> {
 export async function syncSoldierRankToFirestore(lastName: string, newRank: string): Promise<void> {
   const path = 'duties';
   try {
-    await callAdminApi("/api/duties/sync-rank", "POST", { lastName, newRank });
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client rank sync:", apiError);
-    try {
-      const q = query(collection(db, "duties"), where("lastName", "==", lastName));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      const updatedAt = new Date().toISOString();
-      snapshot.forEach((d) => {
-        batch.update(d.ref, { 
-          rank: newRank, 
-          admin_secret: "DUTY_TRACKER_SECRET_2024", 
-          updatedAt 
-        });
+    const q = query(collection(db, "duties"), where("lastName", "==", lastName));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    const updatedAt = new Date().toISOString();
+    snapshot.forEach((d) => {
+      batch.update(d.ref, { 
+        rank: newRank, 
+        admin_secret: "DUTY_TRACKER_SECRET_2024",
+        updatedAt 
       });
-      await batch.commit();
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.WRITE, path);
-    }
+    });
+    await batch.commit();
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
   }
 }
 
@@ -186,25 +147,20 @@ export async function syncSoldierRankToFirestore(lastName: string, newRank: stri
 export async function syncRenameCategoryToFirestore(oldName: string, newName: string): Promise<void> {
   const path = 'duties';
   try {
-    await callAdminApi("/api/duties/rename-category", "POST", { oldName, newName });
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client category rename:", apiError);
-    try {
-      const q = query(collection(db, "duties"), where("category", "==", oldName));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      const updatedAt = new Date().toISOString();
-      snapshot.forEach((d) => {
-        batch.update(d.ref, { 
-          category: newName, 
-          admin_secret: "DUTY_TRACKER_SECRET_2024", 
-          updatedAt 
-        });
+    const q = query(collection(db, "duties"), where("category", "==", oldName));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    const updatedAt = new Date().toISOString();
+    snapshot.forEach((d) => {
+      batch.update(d.ref, { 
+        category: newName, 
+        admin_secret: "DUTY_TRACKER_SECRET_2024",
+        updatedAt 
       });
-      await batch.commit();
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.WRITE, path);
-    }
+    });
+    await batch.commit();
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
   }
 }
 
@@ -214,20 +170,15 @@ export async function syncRenameCategoryToFirestore(oldName: string, newName: st
 export async function syncDeleteCategoryToFirestore(categoryName: string): Promise<void> {
   const path = 'duties';
   try {
-    await callAdminApi("/api/duties/delete-category", "POST", { categoryName });
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client category delete:", apiError);
-    try {
-      const q = query(collection(db, "duties"), where("category", "==", categoryName));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.forEach((d) => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.DELETE, path);
-    }
+    const q = query(collection(db, "duties"), where("category", "==", categoryName));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.forEach((d) => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.DELETE, path);
   }
 }
 
@@ -237,24 +188,19 @@ export async function syncDeleteCategoryToFirestore(categoryName: string): Promi
 export async function batchSyncDutiesToFirestore(duties: Duty[]): Promise<void> {
   const path = 'duties';
   try {
-    await callAdminApi("/api/duties/batch", "POST", { duties });
-  } catch (apiError) {
-    console.warn("API call failed, falling back to direct Firestore client batch sync:", apiError);
-    try {
-      const batch = writeBatch(db);
-      const updatedAt = new Date().toISOString();
-      duties.forEach((duty) => {
-        const docRef = doc(db, "duties", duty.id);
-        batch.set(docRef, { 
-          ...duty, 
-          admin_secret: "DUTY_TRACKER_SECRET_2024", 
-          updatedAt 
-        }, { merge: true });
-      });
-      await batch.commit();
-    } catch (fsError) {
-      handleFirestoreError(fsError, OperationType.WRITE, path);
-    }
+    const batch = writeBatch(db);
+    const updatedAt = new Date().toISOString();
+    duties.forEach((duty) => {
+      const docRef = doc(db, "duties", duty.id);
+      batch.set(docRef, { 
+        ...duty, 
+        admin_secret: "DUTY_TRACKER_SECRET_2024",
+        updatedAt 
+      }, { merge: true });
+    });
+    await batch.commit();
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
   }
 }
 
