@@ -6,6 +6,7 @@ import CategoryManagerModal from "./CategoryManagerModal";
 
 interface AdminPanelProps {
   isAdmin: boolean;
+  isHR?: boolean;
   allowedCategory: string | null;
   onLogin: (password: string) => Promise<boolean> | boolean;
   onLogout: () => void;
@@ -21,6 +22,7 @@ interface AdminPanelProps {
 
 export default function AdminPanel({
   isAdmin,
+  isHR = false,
   allowedCategory,
   onLogin,
   onLogout,
@@ -165,17 +167,19 @@ export default function AdminPanel({
   return (
     <>
       {/* Admin Utility Bar - Visible ONLY when logged in */}
-      {(isAdmin || !!allowedCategory) && (
+      {(isAdmin || !!allowedCategory || isHR) && (
         <div className="bg-slate-900/60 border-b border-slate-800/80 py-3.5 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-2 text-slate-100">
-              <Shield className="w-5 h-5 text-emerald-500 fill-emerald-500/10 shrink-0" />
+              <Shield className={`w-5 h-5 shrink-0 ${isHR ? "text-sky-500 fill-sky-500/10" : "text-emerald-500 fill-emerald-500/10"}`} />
               <div>
                 <p className="text-sm font-bold tracking-tight">
-                  {isAdmin ? "Administrative Suite Enabled" : `Shop Admin: ${allowedCategory}`}
+                  {isHR ? "HR Administrative Suite Enabled" : isAdmin ? "Administrative Suite Enabled" : `Shop Admin: ${allowedCategory}`}
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  {isAdmin 
+                  {isHR
+                    ? "You have write authorization ONLY for non-tiered command appointed duties."
+                    : isAdmin 
                     ? "You have full write authorization. Double-click or click action buttons to edit."
                     : `Authorized for ${allowedCategory} shop only. You can edit entries within your section.`
                   }

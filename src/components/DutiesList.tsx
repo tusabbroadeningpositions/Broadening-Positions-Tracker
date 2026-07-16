@@ -9,6 +9,7 @@ interface DutiesListProps {
   duties: Duty[];
   soldierSummaries: SoldierSummary[];
   isAdmin: boolean;
+  isHR?: boolean;
   allowedCategory: string | null;
   onEditDuty: (duty: Duty) => void;
   onDeleteDuty: (id: string) => void;
@@ -21,6 +22,7 @@ export default function DutiesList({
   duties,
   soldierSummaries,
   isAdmin,
+  isHR = false,
   allowedCategory,
   onEditDuty,
   onDeleteDuty,
@@ -34,7 +36,7 @@ export default function DutiesList({
   const [tierFilter, setTierFilter] = useState("All"); // All, 1, 2, 3, N/A
   const [scopeFilter, setScopeFilter] = useState("All"); // All, EL, U, N/A
   const [expirationFilter, setExpirationFilter] = useState("All"); // All, Expired, Expiring, Active
-  const [commandFilter, setCommandFilter] = useState("All"); // All, Yes, No
+  const [commandFilter, setCommandFilter] = useState("All"); // All, Yes, No, NonTiered
   const [personnelFilter, setPersonnelFilter] = useState("All");
 
   // Infinite Scroll States
@@ -127,6 +129,17 @@ export default function DutiesList({
     }
   }, [allowedCategory, uniqueCategories, myShopTrigger]);
 
+  // Set default filter if HR admin logs in (once per session/change)
+  const lastIsHRRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isHR && !lastIsHRRef.current) {
+      setCommandFilter("NonTiered");
+      setVisibleCount(25);
+    }
+    lastIsHRRef.current = isHR;
+  }, [isHR]);
+
   // Filter & Search Logic
   const filteredDuties = useMemo(() => {
     const result = duties.filter((duty) => {
@@ -186,7 +199,13 @@ export default function DutiesList({
       // 7. Command Appointed Filter
       let matchesCommand = true;
       if (commandFilter !== "All") {
-        matchesCommand = commandFilter === "Yes" ? !!duty.isCommandAppointed : !duty.isCommandAppointed;
+        if (commandFilter === "Yes") {
+          matchesCommand = !!duty.isCommandAppointed;
+        } else if (commandFilter === "No") {
+          matchesCommand = !duty.isCommandAppointed;
+        } else if (commandFilter === "NonTiered") {
+          matchesCommand = !!duty.isCommandAppointed && !!duty.isNonTiered;
+        }
       }
 
       // 8. Personnel Filter
@@ -506,6 +525,7 @@ export default function DutiesList({
             >
               <option value="All">All Appointment Types</option>
               <option value="Yes">Command Appointed Only ({duties.filter(d => d.isCommandAppointed).length})</option>
+              <option value="NonTiered">Cmd Appointed - Non-Tiered ({duties.filter(d => d.isCommandAppointed && d.isNonTiered).length})</option>
               <option value="No">Standard Duties Only ({duties.filter(d => !d.isCommandAppointed).length})</option>
             </select>
           </div>
@@ -537,8 +557,8 @@ export default function DutiesList({
         <div className="flex flex-wrap items-center gap-4 mt-3 pt-2.5 border-t border-slate-800/80 text-[10px] text-slate-400">
           <span className="font-bold text-slate-300 uppercase tracking-wider">Legend:</span>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 bg-amber-500/20 border border-amber-500/40 rounded-sm"></span>
-            <span>Gold Highlight = Command Appointed Duties</span>
+            <span className="inline-block w-2.5 h-2.5 bg-sky-500/20 border border-sky-500/40 rounded-sm"></span>
+            <span>Light Blue Highlight = Command Appointed Duties</span>
           </div>
         </div>
       </div>
@@ -634,7 +654,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                {(isAdmin || !!allowedCategory) && (
+                {(isAdmin || !!allowedCategory || isHR) && (
                   <th scope="col" className="px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider">
                     Actions
                   </th>
@@ -648,13 +668,15 @@ export default function DutiesList({
                     const isVacant = (duty.lastName || "").toUpperCase() === "VACANT";
                     const dutyCat = (duty.category || "").trim().toLowerCase();
                     const authPrefix = (allowedCategory || "").trim().toLowerCase();
-                    const canEdit = isAdmin || (!!allowedCategory && dutyCat.startsWith(authPrefix));
+                    const canEdit = isAdmin 
+                      || (isHR && !!duty.isCommandAppointed && !!duty.isNonTiered)
+                      || (!!allowedCategory && dutyCat.startsWith(authPrefix));
                     return (
                       <tr 
                         key={duty.id} 
                         className={`hover:bg-slate-850/50 transition-all duration-75 ${
                           duty.isCommandAppointed 
-                            ? "bg-amber-500/10 border-y border-amber-500/20" 
+                            ? "bg-sky-500/10 border-y border-sky-500/20" 
                             : isVacant 
                             ? "bg-slate-950/20" 
                             : ""
@@ -669,13 +691,13 @@ export default function DutiesList({
                         <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span className={`text-sm leading-tight block rounded-sm ${
                             duty.isCommandAppointed 
-                              ? "text-amber-400 font-extrabold bg-amber-950/40 border border-amber-900/50 px-1.5 py-0.5"
+                              ? "text-sky-400 font-extrabold bg-sky-950/40 border border-sky-900/50 px-1.5 py-0.5"
                               : "text-slate-200 font-bold"
                           }`}>
                             {duty.jobTitle}
                           </span>
                           {duty.isCommandAppointed && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-extrabold bg-amber-600/80 text-amber-50 rounded-sm border border-amber-500/60 uppercase tracking-wider">
+                            <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-extrabold bg-sky-600/80 text-sky-50 rounded-sm border border-sky-500/60 uppercase tracking-wider">
                               Cmd Appt
                             </span>
                           )}
@@ -700,7 +722,9 @@ export default function DutiesList({
 
                       {/* Tier Badge */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {duty.tierLevel !== null ? (
+                        {duty.isNonTiered ? (
+                          <span className="text-slate-500 text-xs font-mono font-medium">N/A</span>
+                        ) : duty.tierLevel !== null ? (
                           <button
                             onClick={() => handleFilterChange(setTierFilter, String(duty.tierLevel))}
                             className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-bold font-mono border cursor-pointer transition-colors ${
@@ -728,7 +752,11 @@ export default function DutiesList({
                       {/* Term details */}
                       <td className="px-6 py-4 whitespace-nowrap text-xs">
                         <div className="flex flex-col space-y-1">
-                          {duty.specialized ? (
+                          {duty.isNonTiered ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800 self-start">
+                              NON-TIERED
+                            </span>
+                          ) : duty.specialized ? (
                             <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold uppercase bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-900/40 self-start">
                               <Sparkles className="w-2.5 h-2.5" />
                               SPEC/TITLE (No limit)
@@ -813,7 +841,7 @@ export default function DutiesList({
                       </td>
 
                       {/* Admin Actions */}
-                      {(isAdmin || !!allowedCategory) && (
+                      {(isAdmin || !!allowedCategory || isHR) && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
                           {canEdit ? (
                             deletingId === duty.id ? (

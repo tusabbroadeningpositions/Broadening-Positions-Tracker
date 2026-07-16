@@ -43,6 +43,7 @@ service cloud.firestore {
         && (!('tierLevel' in data) || data.tierLevel == null || data.tierLevel is number)
         && (!('specialized' in data) || data.specialized is bool)
         && (!('isCommandAppointed' in data) || data.isCommandAppointed is bool)
+        && (!('isNonTiered' in data) || data.isNonTiered is bool)
         && (!('dateStarted' in data) || data.dateStarted is string)
         && (!('termLength' in data) || data.termLength is string)
         && (!('termEndDate' in data) || data.termEndDate is string)

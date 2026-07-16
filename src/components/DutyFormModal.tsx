@@ -11,6 +11,7 @@ interface DutyFormModalProps {
   editingDuty?: Duty | null;
   allDuties: Duty[];
   allowedCategory: string | null;
+  isHR?: boolean;
 }
 
 export default function DutyFormModal({
@@ -20,6 +21,7 @@ export default function DutyFormModal({
   editingDuty,
   allDuties,
   allowedCategory,
+  isHR = false,
 }: DutyFormModalProps) {
   const [category, setCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -33,6 +35,7 @@ export default function DutyFormModal({
   const [specialized, setSpecialized] = useState(false);
   const [dutyType, setDutyType] = useState<"EL" | "U" | "N/A">("N/A");
   const [isCommandAppointed, setIsCommandAppointed] = useState(false);
+  const [isNonTiered, setIsNonTiered] = useState(false);
 
   // Autocomplete / suggestions helpers
   const [lastNameSuggestions, setLastNameSuggestions] = useState<string[]>([]);
@@ -51,13 +54,14 @@ export default function DutyFormModal({
       setLastName(editingDuty.lastName);
       setRank(editingDuty.rank);
       setDateStarted(editingDuty.dateStarted);
-      setTermLength(editingDuty.termLength);
-      setTermEndDate(editingDuty.termEndDate);
+      setTermLength(isHR ? "" : editingDuty.termLength);
+      setTermEndDate(isHR ? "" : editingDuty.termEndDate);
       setElementOrGroup(editingDuty.elementOrGroup);
-      setTierLevel(editingDuty.tierLevel !== null ? String(editingDuty.tierLevel) : "N/A");
+      setTierLevel(isHR ? "N/A" : (editingDuty.tierLevel !== null ? String(editingDuty.tierLevel) : "N/A"));
       setSpecialized(editingDuty.specialized);
       setDutyType(editingDuty.dutyType);
-      setIsCommandAppointed(editingDuty.isCommandAppointed ?? isCommandAppointedDuty(editingDuty.category, editingDuty.jobTitle));
+      setIsCommandAppointed(isHR ? true : (editingDuty.isCommandAppointed ?? isCommandAppointedDuty(editingDuty.category, editingDuty.jobTitle)));
+      setIsNonTiered(isHR ? true : (editingDuty.isNonTiered ?? false));
     } else {
       // Set sensible defaults for a new duty
       let initialCategory = allowedCategory || "";
@@ -73,22 +77,23 @@ export default function DutyFormModal({
       setLastName("");
       setRank("SSG");
       setDateStarted("");
-      setTermLength("2-5 yrs");
+      setTermLength(isHR ? "" : "2-5 yrs");
       setTermEndDate("");
       setElementOrGroup("CT");
-      setTierLevel("1");
+      setTierLevel(isHR ? "N/A" : "1");
       setSpecialized(false);
       setDutyType("U");
-      setIsCommandAppointed(false);
+      setIsCommandAppointed(isHR ? true : false);
+      setIsNonTiered(isHR ? true : false);
     }
-  }, [editingDuty, isOpen]);
+  }, [editingDuty, isOpen, isHR]);
 
   // Auto-set command appointed based on title/category for new duties
   useEffect(() => {
-    if (!editingDuty && isOpen) {
+    if (!editingDuty && isOpen && !isHR) {
       setIsCommandAppointed(isCommandAppointedDuty(category, jobTitle));
     }
-  }, [category, jobTitle, editingDuty, isOpen]);
+  }, [category, jobTitle, editingDuty, isOpen, isHR]);
 
   // Extract unique names for autocomplete
   useEffect(() => {
@@ -186,6 +191,7 @@ export default function DutyFormModal({
   const workloadInfo = getWorkloadImpact();
 
   const calculateAndSetEndDate = (start: string, tier: string) => {
+    if (isNonTiered) return;
     if (!start || tier === "N/A") return;
     const yearsToAdd = tier === "1" ? 5 : tier === "2" ? 6 : tier === "3" ? 7 : 0;
     if (yearsToAdd === 0) return;
@@ -234,13 +240,14 @@ export default function DutyFormModal({
       lastName: lastName.trim() || "VACANT",
       rank: lastName.trim().toUpperCase() === "VACANT" ? "" : rank.trim(),
       dateStarted: dateStarted.trim(),
-      termLength: termLength.trim(),
-      termEndDate: termEndDate.trim(),
+      termLength: isNonTiered ? "" : termLength.trim(),
+      termEndDate: isNonTiered ? "" : termEndDate.trim(),
       elementOrGroup: elementOrGroup.trim(),
-      tierLevel: parsedTier,
+      tierLevel: isNonTiered ? null : parsedTier,
       specialized,
       dutyType,
       isCommandAppointed,
+      isNonTiered,
     });
   };
 
@@ -340,16 +347,16 @@ export default function DutyFormModal({
                 }}
               >
                 {!allowedCategory && <option value="" disabled>-- Select a Shop --</option>}
-                {combinedShops.map((shop) => (
-                  <option key={shop} value={shop}>
-                    {shop}
-                  </option>
-                ))}
                 {!allowedCategory && (
                   <option value="CREATE_NEW_SHOP" className="text-emerald-400 font-bold bg-slate-900">
                     + Create New Shop...
                   </option>
                 )}
+                {combinedShops.map((shop) => (
+                  <option key={shop} value={shop}>
+                    {shop}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -439,11 +446,14 @@ export default function DutyFormModal({
             {/* Term Length */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Term Length
+                Term Length {isNonTiered && "(Grayed out - Non-Tiered)"}
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium"
+                disabled={isNonTiered}
+                className={`w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs text-slate-200 font-medium ${
+                  isNonTiered ? "bg-slate-900/50 text-slate-500 cursor-not-allowed border-slate-850/50" : "bg-slate-950"
+                }`}
                 placeholder="e.g. 2-5 yrs, 3-7 yrs, or N/A"
                 value={termLength}
                 onChange={(e) => setTermLength(e.target.value)}
@@ -456,11 +466,14 @@ export default function DutyFormModal({
             {/* Term End Date */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Term End Date
+                Term End Date {isNonTiered && "(Grayed out - Non-Tiered)"}
               </label>
               <input
                 type="text"
-                className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium"
+                disabled={isNonTiered}
+                className={`w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs text-slate-200 font-medium ${
+                  isNonTiered ? "bg-slate-900/50 text-slate-500 cursor-not-allowed border-slate-850/50" : "bg-slate-950"
+                }`}
                 placeholder="e.g. 1/4/31 or N/A"
                 value={termEndDate}
                 onChange={(e) => setTermEndDate(e.target.value)}
@@ -488,10 +501,13 @@ export default function DutyFormModal({
             {/* Tier Level */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Tier Level of Duty
+                Tier Level of Duty {isNonTiered && "(Grayed out - Non-Tiered)"}
               </label>
               <select
-                className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 font-medium"
+                disabled={isNonTiered}
+                className={`w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs text-slate-200 font-medium ${
+                  isNonTiered ? "bg-slate-900/50 text-slate-500 cursor-not-allowed border-slate-850/50" : "bg-slate-950 cursor-pointer"
+                }`}
                 value={tierLevel}
                 onChange={(e) => handleTierChange(e.target.value)}
               >
@@ -542,23 +558,62 @@ export default function DutyFormModal({
             {/* Command Appointed Toggle */}
             <div className="md:col-span-2 flex items-center justify-between p-3 bg-slate-950/40 rounded border border-slate-850">
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-amber-400">
-                  Command Appointed Position (Cmd Appt)
+                <span className="text-xs font-bold text-sky-400">
+                  Command Appointed Position (Cmd Appt){isHR && " (Locked by HR Admin)"}
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  Highlight this position as Command Appointed (marked with a gold badge and row background).
+                  Highlight this position as Command Appointed (marked with a light blue badge and row background).
                 </span>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  disabled={isHR}
                   checked={isCommandAppointed}
-                  onChange={(e) => setIsCommandAppointed(e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsCommandAppointed(checked);
+                    if (!checked) {
+                      setIsNonTiered(false);
+                    }
+                  }}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                <div className={`w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500 ${isHR ? "opacity-60 cursor-not-allowed" : ""}`}></div>
               </label>
             </div>
+
+            {/* Non-Tiered Position Toggle (Only visible if Command Appointed is selected) */}
+            {isCommandAppointed && (
+              <div className="md:col-span-2 flex items-center justify-between p-3 bg-slate-950/40 rounded border border-slate-850 animate-in slide-in-from-top-2 duration-150">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-200">
+                    Non-Tiered Position{isHR && " (Locked by HR Admin)"}
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    If selected, this position will not have a specific tier level, term length, or term end date.
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={isHR}
+                    checked={isNonTiered}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsNonTiered(checked);
+                      if (checked) {
+                        setTermLength("");
+                        setTermEndDate("");
+                        setTierLevel("N/A");
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className={`w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 ${isHR ? "opacity-60 cursor-not-allowed" : ""}`}></div>
+                </label>
+              </div>
+            )}
 
           </div>
 

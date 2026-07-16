@@ -7,6 +7,7 @@ interface HeaderProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isAdmin: boolean;
+  isHR?: boolean;
   onAdminClick: () => void;
   onLogout: () => void;
   totalDutiesCount: number;
@@ -20,6 +21,7 @@ export default function Header({
   searchQuery,
   setSearchQuery,
   isAdmin,
+  isHR = false,
   onAdminClick,
   onLogout,
   totalDutiesCount,
@@ -126,7 +128,22 @@ export default function Header({
                 SYNCING...
               </div>
             )}
-            {isAdmin ? (
+            {isHR ? (
+              <div className="flex items-center space-x-2">
+                <span className="flex items-center gap-1.5 text-[10px] font-mono bg-sky-950 text-sky-400 border border-sky-800/60 px-2 py-0.5 rounded-sm uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  HR Mode
+                </span>
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-rose-950 hover:text-rose-200 border border-slate-700 rounded-md transition-all duration-150"
+                  title="Logout from HR Mode"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : isAdmin ? (
               <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1.5 text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-sm uppercase tracking-wider">
                   <ShieldCheck className="w-3.5 h-3.5" />

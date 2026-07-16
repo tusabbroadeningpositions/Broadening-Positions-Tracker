@@ -39,6 +39,7 @@ export default function App() {
 
   // Admin authorization states
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isHR, setIsHR] = useState(false);
   const [allowedCategory, setAllowedCategory] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
@@ -57,11 +58,15 @@ export default function App() {
     }
 
     const sessionAdmin = localStorage.getItem("army_duty_admin");
+    const sessionHR = localStorage.getItem("army_duty_is_hr");
     const sessionPassword = localStorage.getItem("army_duty_admin_password");
     const sessionCategory = localStorage.getItem("army_duty_admin_category");
     
     if (sessionAdmin === "true" && sessionPassword) {
       setIsAdmin(true);
+    }
+    if (sessionHR === "true" && sessionPassword) {
+      setIsHR(true);
     }
     if (sessionCategory) {
       setAllowedCategory(sessionCategory.trim());
@@ -138,8 +143,21 @@ export default function App() {
 
     if (masterPasswords.includes(password)) {
       setIsAdmin(true);
+      setIsHR(false);
       setAllowedCategory(null);
       localStorage.setItem("army_duty_admin", "true");
+      localStorage.setItem("army_duty_is_hr", "false");
+      localStorage.setItem("army_duty_admin_password", password);
+      localStorage.removeItem("army_duty_admin_category");
+      return true;
+    }
+
+    if (password === "HR123") {
+      setIsAdmin(false);
+      setIsHR(true);
+      setAllowedCategory(null);
+      localStorage.setItem("army_duty_admin", "false");
+      localStorage.setItem("army_duty_is_hr", "true");
       localStorage.setItem("army_duty_admin_password", password);
       localStorage.removeItem("army_duty_admin_category");
       return true;
@@ -148,8 +166,10 @@ export default function App() {
     if (SHOP_PASSWORDS[password]) {
       const category = SHOP_PASSWORDS[password].trim();
       setIsAdmin(false); // Not a full admin
+      setIsHR(false);
       setAllowedCategory(category);
       localStorage.setItem("army_duty_admin", "false");
+      localStorage.setItem("army_duty_is_hr", "false");
       localStorage.setItem("army_duty_admin_password", password);
       localStorage.setItem("army_duty_admin_category", category);
       return true;
@@ -161,8 +181,10 @@ export default function App() {
   // Admin Logout
   const handleLogout = () => {
     setIsAdmin(false);
+    setIsHR(false);
     setAllowedCategory(null);
     localStorage.removeItem("army_duty_admin");
+    localStorage.removeItem("army_duty_is_hr");
     localStorage.removeItem("army_duty_admin_password");
     localStorage.removeItem("army_duty_admin_category");
   };
@@ -237,6 +259,7 @@ export default function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         isAdmin={isAdmin || !!allowedCategory}
+        isHR={isHR}
         onAdminClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
         totalDutiesCount={metrics.total}
@@ -247,6 +270,7 @@ export default function App() {
       {/* Admin Quick Action Panel */}
       <AdminPanel
         isAdmin={isAdmin}
+        isHR={isHR}
         allowedCategory={allowedCategory}
         onLogin={handleLogin}
         onLogout={handleLogout}
@@ -269,6 +293,7 @@ export default function App() {
             duties={duties}
             soldierSummaries={soldierSummaries}
             isAdmin={isAdmin}
+            isHR={isHR}
             allowedCategory={allowedCategory}
             onEditDuty={handleTriggerEdit}
             onDeleteDuty={handleDeleteDuty}
@@ -304,6 +329,7 @@ export default function App() {
         editingDuty={editingDuty}
         allDuties={duties}
         allowedCategory={allowedCategory}
+        isHR={isHR}
       />
 
       {/* Visual Instruction / Footnote Footer */}

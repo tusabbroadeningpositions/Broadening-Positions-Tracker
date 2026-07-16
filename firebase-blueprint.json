@@ -18,6 +18,7 @@
         "specialized": { "type": "boolean" },
         "dutyType": { "type": "string", "enum": ["EL", "U", "N/A"] },
         "isCommandAppointed": { "type": "boolean" },
+        "isNonTiered": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["category", "jobTitle", "lastName", "rank", "elementOrGroup", "dutyType"]
