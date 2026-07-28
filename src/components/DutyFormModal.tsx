@@ -54,14 +54,14 @@ export default function DutyFormModal({
       setLastName(editingDuty.lastName);
       setRank(editingDuty.rank);
       setDateStarted(editingDuty.dateStarted);
-      setTermLength(isHR ? "" : editingDuty.termLength);
-      setTermEndDate(isHR ? "" : editingDuty.termEndDate);
+      setTermLength(editingDuty.termLength);
+      setTermEndDate(editingDuty.termEndDate);
       setElementOrGroup(editingDuty.elementOrGroup);
-      setTierLevel(isHR ? "N/A" : (editingDuty.tierLevel !== null ? String(editingDuty.tierLevel) : "N/A"));
+      setTierLevel(editingDuty.tierLevel !== null ? String(editingDuty.tierLevel) : "N/A");
       setSpecialized(editingDuty.specialized);
       setDutyType(editingDuty.dutyType);
       setIsCommandAppointed(isHR ? true : (editingDuty.isCommandAppointed ?? isCommandAppointedDuty(editingDuty.category, editingDuty.jobTitle)));
-      setIsNonTiered(isHR ? true : (editingDuty.isNonTiered ?? false));
+      setIsNonTiered(editingDuty.isNonTiered ?? false);
     } else {
       // Set sensible defaults for a new duty
       let initialCategory = allowedCategory || "";
@@ -77,10 +77,10 @@ export default function DutyFormModal({
       setLastName("");
       setRank("SSG");
       setDateStarted("");
-      setTermLength(isHR ? "" : "2-5 yrs");
+      setTermLength("2-5 yrs");
       setTermEndDate("");
       setElementOrGroup("CT");
-      setTierLevel(isHR ? "N/A" : "1");
+      setTierLevel("1");
       setSpecialized(false);
       setDutyType("U");
       setIsCommandAppointed(isHR ? true : false);
@@ -588,7 +588,7 @@ export default function DutyFormModal({
               <div className="md:col-span-2 flex items-center justify-between p-3 bg-slate-950/40 rounded border border-slate-850 animate-in slide-in-from-top-2 duration-150">
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-slate-200">
-                    Non-Tiered Position{isHR && " (Locked by HR Admin)"}
+                  Non-Tiered Position
                   </span>
                   <span className="text-[10px] text-slate-400">
                     If selected, this position will not have a specific tier level, term length, or term end date.
@@ -597,7 +597,6 @@ export default function DutyFormModal({
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    disabled={isHR}
                     checked={isNonTiered}
                     onChange={(e) => {
                       const checked = e.target.checked;
@@ -610,7 +609,7 @@ export default function DutyFormModal({
                     }}
                     className="sr-only peer"
                   />
-                  <div className={`w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 ${isHR ? "opacity-60 cursor-not-allowed" : ""}`}></div>
+                  <div className={`w-11 h-6 bg-slate-800 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-350 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500`}></div>
                 </label>
               </div>
             )}

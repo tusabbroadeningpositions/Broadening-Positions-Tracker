@@ -82,9 +82,7 @@ export function loadDuties(): Duty[] {
  */
 export function saveDuties(duties: Duty[]): void {
   try {
-    const timestamp = new Date().toISOString();
     localStorage.setItem("army_collateral_duties", JSON.stringify(duties));
-    localStorage.setItem("army_collateral_duties_updated", timestamp);
   } catch (error) {
     console.error("Failed to save duties to local storage", error);
   }
@@ -207,8 +205,16 @@ export async function batchSyncDutiesToFirestore(duties: Duty[]): Promise<void> 
 /**
  * Retrieves the last updated timestamp from localStorage
  */
-export function getLastUpdatedTime(): string | null {
-  return localStorage.getItem("army_collateral_duties_updated");
+export function getLastUpdatedTime(duties: Duty[]): string | null {
+  let latestTime: string | null = null;
+  for (const duty of duties) {
+    if (duty.updatedAt) {
+      if (!latestTime || duty.updatedAt > latestTime) {
+        latestTime = duty.updatedAt;
+      }
+    }
+  }
+  return latestTime;
 }
 
 /**

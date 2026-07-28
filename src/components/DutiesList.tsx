@@ -98,9 +98,41 @@ export default function DutiesList({
 
   // Reset visible items when filters change
   const handleFilterChange = (setter: (val: string) => void, val: string) => {
+    // If we're setting to "All", just clear everything and we're done
+    if (val === "All") {
+      handleClearFilters();
+      return;
+    }
+
+    // Otherwise, clear everything else FIRST
+    setCategoryFilter("All");
+    setElementFilter("All");
+    setTierFilter("All");
+    setScopeFilter("All");
+    setExpirationFilter("All");
+    setCommandFilter("All");
+    setPersonnelFilter("All");
+    if (onClearSearch) onClearSearch();
+
+    // Then set the one we want
     setter(val);
     setVisibleCount(25);
   };
+
+  // If search query changes to something non-empty, clear other dropdown filters
+  // to enforce "one filter at a time" rule
+  useEffect(() => {
+    if (searchQuery !== "") {
+      setCategoryFilter("All");
+      setElementFilter("All");
+      setTierFilter("All");
+      setScopeFilter("All");
+      setExpirationFilter("All");
+      setCommandFilter("All");
+      setPersonnelFilter("All");
+      setVisibleCount(25);
+    }
+  }, [searchQuery]);
 
   // Set default filter if shop admin logs in (once per session/change)
   const lastAllowedCategoryRef = useRef<string | null>(null);
@@ -441,11 +473,7 @@ export default function DutiesList({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (isFiltered) {
-              setPersonnelFilter("All");
-            } else {
-              setPersonnelFilter(lastName);
-            }
+            handleFilterChange(setPersonnelFilter, isFiltered ? "All" : lastName);
           }}
           className={`font-semibold text-sm transition-all text-left hover:text-emerald-400 hover:underline cursor-pointer ${
             isFiltered ? "text-emerald-400 underline font-extrabold" : "text-slate-200"
@@ -669,7 +697,7 @@ export default function DutiesList({
                     const dutyCat = (duty.category || "").trim().toLowerCase();
                     const authPrefix = (allowedCategory || "").trim().toLowerCase();
                     const canEdit = isAdmin 
-                      || (isHR && !!duty.isCommandAppointed && !!duty.isNonTiered)
+                      || (isHR && !!duty.isCommandAppointed)
                       || (!!allowedCategory && dutyCat.startsWith(authPrefix));
                     return (
                       <tr 

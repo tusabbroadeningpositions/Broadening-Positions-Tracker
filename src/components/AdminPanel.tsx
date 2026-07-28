@@ -178,7 +178,7 @@ export default function AdminPanel({
                 </p>
                 <p className="text-[11px] text-slate-400">
                   {isHR
-                    ? "You have write authorization ONLY for non-tiered command appointed duties."
+                    ? "You have write authorization ONLY for command appointed duties."
                     : isAdmin 
                     ? "You have full write authorization. Double-click or click action buttons to edit."
                     : `Authorized for ${allowedCategory} shop only. You can edit entries within your section.`

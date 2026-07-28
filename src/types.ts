@@ -13,6 +13,7 @@ export interface Duty {
   dutyType: "EL" | "U" | "N/A"; // Element (EL) or Unit (U) duty
   isCommandAppointed?: boolean; // true if the duty is Command Appointed (blue in spreadsheet)
   isNonTiered?: boolean; // true if the duty is Command Appointed but Non-Tiered
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface SoldierSummary {

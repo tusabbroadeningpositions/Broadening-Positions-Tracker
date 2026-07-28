@@ -94,7 +94,7 @@ export default function App() {
         setDuties(data);
         // Also save to local storage as a backup/cache
         saveDuties(data);
-        setLastUpdated(getLastUpdatedTime());
+        setLastUpdated(getLastUpdatedTime(data));
       }
     }
     
@@ -231,7 +231,6 @@ export default function App() {
   const handleImportJSON = async (importedDuties: Duty[]) => {
     try {
       await batchSyncDutiesToFirestore(importedDuties);
-      setLastUpdated(getLastUpdatedTime());
     } catch (err) {
       console.error("Import failed", err);
     }
