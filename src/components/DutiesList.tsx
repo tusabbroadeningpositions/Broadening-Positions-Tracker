@@ -415,7 +415,7 @@ export default function DutiesList({
       doc.setFontSize(8);
       doc.setTextColor(150);
       doc.text(
-        `Page ${i} of ${pageCount} - Confidential - Authorized Personnel Only`,
+        `Page ${i} of ${pageCount}`,
         doc.internal.pageSize.getWidth() / 2,
         doc.internal.pageSize.getHeight() - 10,
         { align: 'center' }
