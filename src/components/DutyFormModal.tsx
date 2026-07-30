@@ -269,7 +269,7 @@ export default function DutyFormModal({
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-slate-900 rounded-lg shadow-2xl border border-slate-800 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 rounded-lg shadow-2xl border border-slate-800 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="px-6 py-4 bg-slate-950 text-white flex items-center justify-between border-b border-slate-850">
@@ -378,7 +378,7 @@ export default function DutyFormModal({
             {/* Last Name */}
             <div className="relative">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Soldier's Last Name * (or "VACANT")
+                Soldier's Last Name, First Name (or "vacant") *
               </label>
               <input
                 type="text"
