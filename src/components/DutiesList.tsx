@@ -638,6 +638,7 @@ export default function DutiesList({
                       <option value="1" className="text-slate-300 bg-slate-950">T1 ({duties.filter(d => d.tierLevel === 1).length})</option>
                       <option value="2" className="text-slate-300 bg-slate-950">T2 ({duties.filter(d => d.tierLevel === 2).length})</option>
                       <option value="3" className="text-slate-300 bg-slate-950">T3 ({duties.filter(d => d.tierLevel === 3).length})</option>
+                      <option value="4" className="text-slate-300 bg-slate-950">T4 ({duties.filter(d => d.tierLevel === 4).length})</option>
                       <option value="N/A" className="text-slate-300 bg-slate-950">N/A ({duties.filter(d => d.tierLevel === null || d.tierLevel === undefined).length})</option>
                     </select>
                   </div>
@@ -756,7 +757,9 @@ export default function DutiesList({
                           <button
                             onClick={() => handleFilterChange(setTierFilter, String(duty.tierLevel))}
                             className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-bold font-mono border cursor-pointer transition-colors ${
-                              duty.tierLevel === 3
+                              duty.tierLevel === 4
+                                ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30" // Purple / Platinum
+                                : duty.tierLevel === 3
                                 ? "bg-amber-400/20 text-amber-400 border-amber-400/40 hover:bg-amber-400/30" // Gold
                                 : duty.tierLevel === 2
                                 ? "bg-slate-400/20 text-slate-300 border-slate-400/40 hover:bg-slate-400/30" // Silver

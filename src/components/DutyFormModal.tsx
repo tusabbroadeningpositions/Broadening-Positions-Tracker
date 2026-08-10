@@ -193,7 +193,7 @@ export default function DutyFormModal({
   const calculateAndSetEndDate = (start: string, tier: string) => {
     if (isNonTiered) return;
     if (!start || tier === "N/A") return;
-    const yearsToAdd = tier === "1" ? 5 : tier === "2" ? 6 : tier === "3" ? 7 : 0;
+    const yearsToAdd = tier === "1" ? 5 : tier === "2" ? 6 : tier === "3" ? 7 : tier === "4" ? 8 : 0;
     if (yearsToAdd === 0) return;
 
     const dateParts = start.split('/');
@@ -220,6 +220,8 @@ export default function DutyFormModal({
       setTermLength("2-6 yrs");
     } else if (val === "3") {
       setTermLength("3-7 yrs");
+    } else if (val === "4") {
+      setTermLength("4-8 yrs");
     }
     calculateAndSetEndDate(dateStarted, val);
   };
@@ -459,7 +461,7 @@ export default function DutyFormModal({
                 onChange={(e) => setTermLength(e.target.value)}
               />
               <p className="mt-1 text-[10px] text-slate-500 leading-normal">
-                Standard: Tier 1 (2-5 yrs), Tier 2 (2-6 yrs), Tier 3 (3-7 yrs)
+                Standard: Tier 1 (2-5 yrs), Tier 2 (2-6 yrs), Tier 3 (3-7 yrs), Tier 4 (4-8 yrs)
               </p>
             </div>
 
@@ -515,6 +517,7 @@ export default function DutyFormModal({
                 <option value="1">Tier 1 (Value: 1)</option>
                 <option value="2">Tier 2 (Value: 2)</option>
                 <option value="3">Tier 3 (Value: 3)</option>
+                <option value="4">Tier 4 (Value: 4)</option>
               </select>
             </div>
 

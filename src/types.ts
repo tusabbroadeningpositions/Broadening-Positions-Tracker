@@ -8,7 +8,7 @@ export interface Duty {
   termLength: string;
   termEndDate: string;
   elementOrGroup: string;
-  tierLevel: number | null; // 1, 2, 3, or null for N/A or empty
+  tierLevel: number | null; // 1, 2, 3, 4, or null for N/A or empty
   specialized: boolean; // true if specialized with no term limit, false otherwise
   dutyType: "EL" | "U" | "N/A"; // Element (EL) or Unit (U) duty
   isCommandAppointed?: boolean; // true if the duty is Command Appointed (blue in spreadsheet)

@@ -60,6 +60,7 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
       tier1: duties.filter(d => d.tierLevel === 1).length,
       tier2: duties.filter(d => d.tierLevel === 2).length,
       tier3: duties.filter(d => d.tierLevel === 3).length,
+      tier4: duties.filter(d => d.tierLevel === 4).length,
       command: duties.filter(d => d.isCommandAppointed).length,
       specTitle: duties.filter(d => d.specialized).length,
     };
@@ -133,6 +134,15 @@ export default function StatisticsView({ duties }: StatisticsViewProps) {
           colorClass="text-orange-400"
           bgColorClass="bg-orange-500/20"
           barColorClass="bg-orange-500"
+        />
+        <StatCard 
+          title="Tier 4 Positions"
+          value={stats.tier4}
+          total={stats.total}
+          icon={<Award className="w-5 h-5" />}
+          colorClass="text-purple-400"
+          bgColorClass="bg-purple-500/20"
+          barColorClass="bg-purple-500"
         />
 
         {/* Special Designations */}
