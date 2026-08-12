@@ -389,55 +389,17 @@ export default function DutyFormModal({
               />
               {(isAdmin || isHR) && (
                 <div className="mt-2">
-                  {!showScopeInput ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowScopeInput(true)}
-                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold underline underline-offset-2 transition-colors cursor-pointer"
-                    >
-                      + add scope of responsibilities / senior rater abbreviation
-                    </button>
-                  ) : (
-                    <div className="p-3 bg-slate-900 border border-slate-800 rounded mt-2 space-y-3 animate-in slide-in-from-top-2 duration-150">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold text-slate-300">Position Details</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowScopeInput(false);
-                            setScopeOfResponsibilities("");
-                            setSeniorRaterAbbreviation("");
-                          }}
-                          className="text-slate-500 hover:text-slate-300 cursor-pointer p-0.5"
-                          title="Remove details"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                          Senior Rater Abbreviation
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200"
-                          placeholder="e.g. CDR, TUSAB"
-                          value={seniorRaterAbbreviation}
-                          onChange={(e) => setSeniorRaterAbbreviation(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                          Scope of Responsibilities
-                        </label>
-                        <textarea
-                          rows={3}
-                          className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 resize-none"
-                          placeholder="Describe the duties and expectations..."
-                          value={scopeOfResponsibilities}
-                          onChange={(e) => setScopeOfResponsibilities(e.target.value)}
-                        />
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowScopeInput(true)}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold underline underline-offset-2 transition-colors cursor-pointer"
+                  >
+                    + add scope of responsibilities / senior rater abbreviation
+                  </button>
+                  {(scopeOfResponsibilities || seniorRaterAbbreviation) && (
+                    <div className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1.5 bg-slate-900/50 p-2 rounded border border-slate-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                      <span>Details added. They will be saved when you submit this form.</span>
                     </div>
                   )}
                 </div>
@@ -707,7 +669,7 @@ export default function DutyFormModal({
       </div>
 
       {showNewShopPrompt && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
           <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-150">
             <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-850 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-200">Create New Shop</span>
@@ -769,6 +731,68 @@ export default function DutyFormModal({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Scope of Responsibilities Modal */}
+      {showScopeInput && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-3xl w-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 bg-slate-950 border-b border-slate-850 flex items-center justify-between">
+              <span className="text-sm font-black text-slate-100 tracking-wide">Edit Position Scope</span>
+              <button
+                type="button"
+                onClick={() => setShowScopeInput(false)}
+                className="text-slate-400 hover:text-white rounded p-1 hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  Senior Rater Abbreviation
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 border border-slate-800 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-slate-950 text-slate-200 font-medium placeholder:text-slate-600"
+                  placeholder="e.g. CDR, TUSAB"
+                  value={seniorRaterAbbreviation}
+                  onChange={(e) => setSeniorRaterAbbreviation(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  Scope of Responsibilities
+                </label>
+                <textarea
+                  rows={12}
+                  className="w-full px-4 py-3 border border-slate-800 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-slate-950 text-slate-200 resize-none font-medium placeholder:text-slate-600 leading-relaxed"
+                  placeholder="Describe the duties, expectations, and broad scope of responsibilities here..."
+                  value={scopeOfResponsibilities}
+                  onChange={(e) => setScopeOfResponsibilities(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t border-slate-850 bg-slate-950 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setScopeOfResponsibilities("");
+                  setSeniorRaterAbbreviation("");
+                }}
+                className="px-4 py-2 text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-400/10 rounded transition cursor-pointer"
+              >
+                Clear All
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowScopeInput(false)}
+                className="px-6 py-2.5 text-xs font-black text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 rounded transition cursor-pointer shadow-sm"
+              >
+                Done Editing
+              </button>
+            </div>
           </div>
         </div>
       )}

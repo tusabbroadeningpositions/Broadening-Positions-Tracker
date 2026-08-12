@@ -40,7 +40,7 @@ export default function DutyInspectorModal({ duty, onClose }: DutyInspectorModal
               </h1>
               {duty.seniorRaterAbbreviation && (
                 <div className="mt-2 text-sm font-bold text-emerald-400 bg-emerald-950/30 inline-block px-2 py-1 rounded border border-emerald-900/50">
-                  Senior Rater: {duty.seniorRaterAbbreviation}
+                  Senior Rater Abbreviation: {duty.seniorRaterAbbreviation}
                 </div>
               )}
             </div>
