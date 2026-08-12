@@ -13,6 +13,8 @@ export interface Duty {
   dutyType: "EL" | "U" | "N/A"; // Element (EL) or Unit (U) duty
   isCommandAppointed?: boolean; // true if the duty is Command Appointed (blue in spreadsheet)
   isNonTiered?: boolean; // true if the duty is Command Appointed but Non-Tiered
+  scopeOfResponsibilities?: string; // Optional description of responsibilities
+  seniorRaterAbbreviation?: string; // Optional senior rater abbreviation
   updatedAt?: string; // ISO timestamp of last modification
 }
 

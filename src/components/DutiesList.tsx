@@ -4,6 +4,7 @@ import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
 import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import DutyInspectorModal from "./DutyInspectorModal";
 
 interface DutiesListProps {
   duties: Duty[];
@@ -42,6 +43,7 @@ export default function DutiesList({
   // Infinite Scroll States
   const [visibleCount, setVisibleCount] = useState(25);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedDutyForInspection, setSelectedDutyForInspection] = useState<Duty | null>(null);
   const sentinelRef = useRef<HTMLTableRowElement | null>(null);
 
   // Get unique categories and elements for dropdown filter lists
@@ -718,13 +720,18 @@ export default function DutiesList({
                           {duty.category}
                         </span>
                         <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                          <span className={`text-sm leading-tight block rounded-sm ${
-                            duty.isCommandAppointed 
-                              ? "text-sky-400 font-extrabold bg-sky-950/40 border border-sky-900/50 px-1.5 py-0.5"
-                              : "text-slate-200 font-bold"
-                          }`}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDutyForInspection(duty)}
+                            className={`text-sm leading-tight block rounded-sm cursor-pointer hover:opacity-80 transition-opacity text-left ${
+                              duty.isCommandAppointed 
+                                ? "text-sky-400 font-extrabold bg-sky-950/40 border border-sky-900/50 px-1.5 py-0.5"
+                                : "text-slate-200 font-bold"
+                            }`}
+                            title="Click to view position details"
+                          >
                             {duty.jobTitle}
-                          </span>
+                          </button>
                           {duty.isCommandAppointed && (
                             <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-extrabold bg-sky-600/80 text-sky-50 rounded-sm border border-sky-500/60 uppercase tracking-wider">
                               Cmd Appt
@@ -968,6 +975,13 @@ export default function DutiesList({
           </div>
         )}
       </div>
+      
+      {selectedDutyForInspection && (
+        <DutyInspectorModal 
+          duty={selectedDutyForInspection} 
+          onClose={() => setSelectedDutyForInspection(null)} 
+        />
+      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ interface DutyFormModalProps {
   allDuties: Duty[];
   allowedCategory: string | null;
   isHR?: boolean;
+  isAdmin?: boolean;
 }
 
 export default function DutyFormModal({
@@ -22,6 +23,7 @@ export default function DutyFormModal({
   allDuties,
   allowedCategory,
   isHR = false,
+  isAdmin = false,
 }: DutyFormModalProps) {
   const [category, setCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -36,6 +38,10 @@ export default function DutyFormModal({
   const [dutyType, setDutyType] = useState<"EL" | "U" | "N/A">("N/A");
   const [isCommandAppointed, setIsCommandAppointed] = useState(false);
   const [isNonTiered, setIsNonTiered] = useState(false);
+  
+  const [scopeOfResponsibilities, setScopeOfResponsibilities] = useState("");
+  const [seniorRaterAbbreviation, setSeniorRaterAbbreviation] = useState("");
+  const [showScopeInput, setShowScopeInput] = useState(false);
 
   // Autocomplete / suggestions helpers
   const [lastNameSuggestions, setLastNameSuggestions] = useState<string[]>([]);
@@ -62,6 +68,9 @@ export default function DutyFormModal({
       setDutyType(editingDuty.dutyType);
       setIsCommandAppointed(isHR ? true : (editingDuty.isCommandAppointed ?? isCommandAppointedDuty(editingDuty.category, editingDuty.jobTitle)));
       setIsNonTiered(editingDuty.isNonTiered ?? false);
+      setScopeOfResponsibilities(editingDuty.scopeOfResponsibilities || "");
+      setSeniorRaterAbbreviation(editingDuty.seniorRaterAbbreviation || "");
+      setShowScopeInput(!!editingDuty.scopeOfResponsibilities || !!editingDuty.seniorRaterAbbreviation);
     } else {
       // Set sensible defaults for a new duty
       let initialCategory = allowedCategory || "";
@@ -85,8 +94,11 @@ export default function DutyFormModal({
       setDutyType("U");
       setIsCommandAppointed(isHR ? true : false);
       setIsNonTiered(isHR ? true : false);
+      setScopeOfResponsibilities("");
+      setSeniorRaterAbbreviation("");
+      setShowScopeInput(false);
     }
-  }, [editingDuty, isOpen, isHR]);
+  }, [editingDuty, isOpen, isHR, allowedCategory]);
 
   // Auto-set command appointed based on title/category for new duties
   useEffect(() => {
@@ -248,6 +260,8 @@ export default function DutyFormModal({
       dutyType,
       isCommandAppointed,
       isNonTiered,
+      scopeOfResponsibilities: scopeOfResponsibilities.trim(),
+      seniorRaterAbbreviation: seniorRaterAbbreviation.trim(),
     });
   };
 
@@ -373,6 +387,61 @@ export default function DutyFormModal({
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
               />
+              {(isAdmin || isHR) && (
+                <div className="mt-2">
+                  {!showScopeInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowScopeInput(true)}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold underline underline-offset-2 transition-colors cursor-pointer"
+                    >
+                      + add scope of responsibilities / senior rater abbreviation
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded mt-2 space-y-3 animate-in slide-in-from-top-2 duration-150">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-bold text-slate-300">Position Details</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowScopeInput(false);
+                            setScopeOfResponsibilities("");
+                            setSeniorRaterAbbreviation("");
+                          }}
+                          className="text-slate-500 hover:text-slate-300 cursor-pointer p-0.5"
+                          title="Remove details"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                          Senior Rater Abbreviation
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200"
+                          placeholder="e.g. CDR, TUSAB"
+                          value={seniorRaterAbbreviation}
+                          onChange={(e) => setSeniorRaterAbbreviation(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                          Scope of Responsibilities
+                        </label>
+                        <textarea
+                          rows={3}
+                          className="w-full px-3 py-2 border border-slate-850 rounded focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-xs bg-slate-950 text-slate-200 resize-none"
+                          placeholder="Describe the duties and expectations..."
+                          value={scopeOfResponsibilities}
+                          onChange={(e) => setScopeOfResponsibilities(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Last Name */}

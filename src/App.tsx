@@ -329,6 +329,7 @@ export default function App() {
         allDuties={duties}
         allowedCategory={allowedCategory}
         isHR={isHR}
+        isAdmin={isAdmin}
       />
 
       {/* Visual Instruction / Footnote Footer */}
