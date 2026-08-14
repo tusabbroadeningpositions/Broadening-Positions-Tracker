@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet } from "lucide-react";
+import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet, FileText } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Duty, UpdateRequest } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
 import UpdateRequestsConsole from "./UpdateRequestsConsole";
+import VacancyDraftsConsole from "./VacancyDraftsConsole";
 
 interface AdminPanelProps {
   isAdmin: boolean;
@@ -21,6 +22,8 @@ interface AdminPanelProps {
   setShowLoginModal: (show: boolean) => void;
   updateRequests?: UpdateRequest[];
   onEditDuty?: (duty: Duty) => void;
+  vacancyDrafts?: any[];
+  onOpenDraft?: (duty: Duty, draft: any) => void;
 }
 
 export default function AdminPanel({
@@ -39,6 +42,8 @@ export default function AdminPanel({
   onShowMyShop,
   updateRequests = [],
   onEditDuty = () => {},
+  vacancyDrafts = [],
+  onOpenDraft = () => {},
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -46,6 +51,7 @@ export default function AdminPanel({
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showRequestsConsole, setShowRequestsConsole] = useState(false);
+  const [showVacancyConsole, setShowVacancyConsole] = useState(false);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +222,32 @@ export default function AdminPanel({
 
   const pendingCount = filteredRequests.filter(r => r.status === "pending").length;
 
+  const filteredVacancyDrafts = vacancyDrafts.filter(draft => {
+    if (isAdmin && !allowedCategory && !isHR) {
+      return true;
+    }
+    
+    const duty = allDuties.find(d => d.id === draft.dutyId);
+    const category = duty?.category || draft.shopName || "";
+    
+    const isShopExclusive = ADMIN_SHOPS.some(shop => 
+      category.trim().toLowerCase().startsWith(shop.toLowerCase())
+    );
+    
+    if (isHR) {
+      const isHRExclusive = !!duty?.isCommandAppointed && !!duty?.isNonTiered && !isShopExclusive;
+      return isHRExclusive;
+    }
+    
+    if (allowedCategory) {
+      return category.trim().toLowerCase().startsWith(allowedCategory.toLowerCase());
+    }
+    
+    return true;
+  });
+
+  const pendingVacancyCount = filteredVacancyDrafts.filter(d => d.status === "pending").length;
+
   return (
     <>
       {/* Admin Utility Bar - Visible ONLY when logged in */}
@@ -285,6 +317,23 @@ export default function AdminPanel({
                   {pendingCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center border border-slate-900 animate-pulse">
                       {pendingCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {/* Vacancy Drafts Button with Badge */}
+              {(isAdmin || isHR || !!allowedCategory) && (
+                <button
+                  onClick={() => setShowVacancyConsole(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-200 border border-emerald-800/50 rounded text-xs font-semibold shadow-sm transition duration-150 relative cursor-pointer"
+                  title="View submitted vacancy drafts"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Vacancy Drafts</span>
+                  {pendingVacancyCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 bg-emerald-500 text-slate-950 font-black text-[9px] rounded-full flex items-center justify-center border border-slate-900 animate-pulse">
+                      {pendingVacancyCount}
                     </span>
                   )}
                 </button>
@@ -429,6 +478,14 @@ export default function AdminPanel({
         requests={filteredRequests}
         allDuties={allDuties}
         onEditDuty={onEditDuty}
+      />
+      {/* Vacancy Drafts Console Overlay */}
+      <VacancyDraftsConsole
+        isOpen={showVacancyConsole}
+        onClose={() => setShowVacancyConsole(false)}
+        drafts={filteredVacancyDrafts}
+        allDuties={allDuties}
+        onOpenDraft={onOpenDraft}
       />
     </>
   );

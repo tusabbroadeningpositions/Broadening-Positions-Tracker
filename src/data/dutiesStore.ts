@@ -454,4 +454,49 @@ export async function approveUpdateRequest(req: UpdateRequest): Promise<void> {
   }
 }
 
+/**
+ * Update the status of a vacancy draft.
+ */
+export async function updateVacancyDraftStatus(id: string, status: "pending" | "reviewed" | "approved" | "rejected" | "filled"): Promise<void> {
+  const path = `vacancy_drafts/${id}`;
+  try {
+    await updateDoc(doc(db, "vacancy_drafts", id), {
+      status,
+      admin_secret: "DUTY_TRACKER_SECRET_2024",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Update admin notes for a vacancy draft.
+ */
+export async function updateVacancyDraftAdminNotes(id: string, adminNotes: string): Promise<void> {
+  const path = `vacancy_drafts/${id}`;
+  try {
+    await updateDoc(doc(db, "vacancy_drafts", id), {
+      adminNotes,
+      admin_secret: "DUTY_TRACKER_SECRET_2024",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Delete a vacancy draft.
+ */
+export async function deleteVacancyDraft(id: string): Promise<void> {
+  const path = `vacancy_drafts/${id}`;
+  try {
+    await deleteDoc(doc(db, "vacancy_drafts", id));
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+
 

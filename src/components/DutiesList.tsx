@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Duty, SoldierSummary } from "../types";
 import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
-import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check } from "lucide-react";
+import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check, Megaphone, X } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import DutyInspectorModal from "./DutyInspectorModal";
 import RequestUpdateModal from "./RequestUpdateModal";
+import VacancyAnnouncementModal from "./VacancyAnnouncementModal";
+import { motion, AnimatePresence } from "motion/react";
 
 interface DutiesListProps {
   duties: Duty[];
@@ -51,6 +53,8 @@ export default function DutiesList({
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestTargetDuty, setRequestTargetDuty] = useState<Duty | null>(null);
   const [showSubmitSuccessToast, setShowSubmitSuccessToast] = useState(false);
+  const [selectedDutyForVacancy, setSelectedDutyForVacancy] = useState<Duty | null>(null);
+  const [dutyPendingConfirmation, setDutyPendingConfirmation] = useState<Duty | null>(null);
 
   useEffect(() => {
     if (showSubmitSuccessToast) {
@@ -132,6 +136,21 @@ export default function DutiesList({
     // Then set the one we want
     setter(val);
     setVisibleCount(25);
+  };
+
+  const handleAnnounceClick = (duty: Duty) => {
+    if (duty.dutyType === 'EL') {
+      setDutyPendingConfirmation(duty);
+    } else {
+      setSelectedDutyForVacancy(duty);
+    }
+  };
+
+  const confirmAnnouncement = () => {
+    if (dutyPendingConfirmation) {
+      setSelectedDutyForVacancy(dutyPendingConfirmation);
+      setDutyPendingConfirmation(null);
+    }
   };
 
   // If search query changes to something non-empty, clear other dropdown filters
@@ -607,18 +626,18 @@ export default function DutiesList({
       </div>
 
       {/* Roster Table Card */}
-      <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-800 text-left">
-            <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 border-b border-slate-800 shadow-sm">
+      <div className="bg-slate-900 rounded-lg border border-slate-800 md:overflow-visible overflow-hidden shadow-xl">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="min-w-full divide-y divide-slate-800 text-left border-separate border-spacing-0">
+            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 shadow-sm">
               <tr>
-                <th scope="col" className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider bg-slate-950 border-b border-slate-800 shadow-sm">
                   Shop & Position Title
                 </th>
-                <th scope="col" className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider bg-slate-950 border-b border-slate-800 shadow-sm">
                   Assigned Personnel
                 </th>
-                <th scope="col" className="px-6 py-2 w-28 min-w-[110px]">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-2 w-28 min-w-[110px] bg-slate-950 border-b border-slate-800 shadow-sm">
                   <div className="flex items-center -ml-2">
                     <select
                       className={`w-24 text-[10px] font-bold bg-slate-950 border border-slate-800 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer uppercase tracking-wider truncate ${
@@ -638,7 +657,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-2 w-24 min-w-[90px]">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-2 w-24 min-w-[90px] bg-slate-950 border-b border-slate-800 shadow-sm">
                   <div className="flex items-center -ml-2">
                     <select
                       className={`w-20 text-[10px] font-bold bg-slate-950 border border-slate-800 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer uppercase tracking-wider truncate ${
@@ -658,7 +677,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-2 w-36 min-w-[140px]">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-2 w-36 min-w-[140px] bg-slate-950 border-b border-slate-800 shadow-sm">
                   <div className="flex items-center -ml-2">
                     <select
                       className={`w-32 text-[10px] font-bold bg-slate-950 border border-slate-800 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer uppercase tracking-wider truncate ${
@@ -680,7 +699,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-2 w-24 min-w-[90px]">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-2 w-24 min-w-[90px] bg-slate-950 border-b border-slate-800 shadow-sm">
                   <div className="flex items-center -ml-2">
                     <select
                       className={`w-20 text-[10px] font-bold bg-slate-950 border border-slate-800 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer uppercase tracking-wider truncate ${
@@ -698,7 +717,7 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider">
+                <th scope="col" className="sticky top-0 z-10 px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider bg-slate-950 border-b border-slate-800 shadow-sm">
                   Actions
                 </th>
               </tr>
@@ -865,6 +884,18 @@ export default function DutiesList({
                                     }`} />
                                     {duty.dateStarted || "N/A"} {duty.termEndDate ? `→ ${duty.termEndDate}` : ""}
                                   </button>
+                                    {(expStatus === 'past' || expStatus === 'warning' || (!duty.lastName || duty.lastName.trim().toUpperCase() === "VACANT")) && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAnnounceClick(duty);
+                                        }}
+                                        className="mt-1.5 flex items-center gap-1.5 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-[10px] font-bold uppercase rounded border border-emerald-500/30 transition-all cursor-pointer w-fit shadow-sm shadow-emerald-500/5"
+                                      >
+                                        <Megaphone className="w-3 h-3" />
+                                        Announce Vacancy
+                                      </button>
+                                    )}
                                 </>
                               );
                             })()
@@ -1030,6 +1061,72 @@ export default function DutiesList({
           </div>
         </div>
       )}
+
+      {/* Vacancy Announcement Modal */}
+      {selectedDutyForVacancy && (
+        <VacancyAnnouncementModal 
+          duty={selectedDutyForVacancy} 
+          onClose={() => setSelectedDutyForVacancy(null)} 
+        />
+      )}
+
+      {/* Confirmation Modal for Element Positions */}
+      <AnimatePresence>
+        {dutyPendingConfirmation && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDutyPendingConfirmation(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden bg-slate-900 border border-slate-800 rounded-xl shadow-2xl"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4 text-amber-400">
+                  <div className="p-2 bg-amber-500/10 rounded-lg">
+                    <AlertCircle className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Assignment Policy</h3>
+                </div>
+                
+                <p className="text-slate-300 text-sm leading-relaxed mb-6">
+                  Most <span className="font-bold text-white">Element</span> positions are assigned directly by the Element Leader and typically do not require a vacancy announcement. 
+                  <br /><br />
+                  Are you sure you want to proceed with a vacancy announcement for this position?
+                </p>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setDutyPendingConfirmation(null)}
+                    className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmAnnouncement}
+                    className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-sm font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Yes, Proceed
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setDutyPendingConfirmation(null)}
+                className="absolute top-4 right-4 p-1 text-slate-500 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

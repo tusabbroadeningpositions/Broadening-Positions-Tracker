@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import AdminPanel from "./components/AdminPanel";
 import DutiesList from "./components/DutiesList";
 import TermExpirationsView from "./components/TermExpirationsView";
+import VacanciesView from "./components/VacanciesView";
 import StatisticsView from "./components/StatisticsView";
 import DutyFormModal from "./components/DutyFormModal";
 
@@ -22,13 +23,14 @@ import {
 } from "./data/dutiesStore";
 import { db } from "./lib/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
-import { useCollectionData } from "react-firebase-hooks/firestore";
+import { useCollection, useCollectionData } from "react-firebase-hooks/firestore";
 import { Shield, Sparkles, BookOpen, Clock, Users, Building2, LogIn } from "lucide-react";
+import VacancyAnnouncementModal from "./components/VacancyAnnouncementModal";
 
 export default function App() {
   const [duties, setDuties] = useState<Duty[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"duties" | "expirations" | "statistics">("duties");
+  const [activeTab, setActiveTab] = useState<"duties" | "expirations" | "vacancies" | "statistics">("duties");
   
   // Firebase Data
   const dutiesRef = collection(db, "duties");
@@ -38,8 +40,24 @@ export default function App() {
   // Load update requests from Firestore
   const requestsRef = collection(db, "update_requests");
   const requestsQ = query(requestsRef, orderBy("createdAt", "desc"));
-  const [firestoreRequests] = useCollectionData(requestsQ);
-  const updateRequests = (firestoreRequests || []) as UpdateRequest[];
+  const [firestoreRequestsSnap] = useCollection(requestsQ);
+  const updateRequests = useMemo(() => {
+    return (firestoreRequestsSnap?.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) || []) as UpdateRequest[];
+  }, [firestoreRequestsSnap]);
+
+  // Load vacancy drafts from Firestore in real-time
+  const draftsRef = collection(db, "vacancy_drafts");
+  const draftsQ = query(draftsRef, orderBy("createdAt", "desc"));
+  const [firestoreDraftsSnap] = useCollection(draftsQ);
+  const vacancyDrafts = useMemo(() => {
+    return (firestoreDraftsSnap?.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) || []) as any[];
+  }, [firestoreDraftsSnap]);
   
   const hasSeededRef = useRef(false);
 
@@ -54,6 +72,11 @@ export default function App() {
   const [editingDuty, setEditingDuty] = useState<Duty | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [myShopTrigger, setMyShopTrigger] = useState(0);
+
+  // Vacancy Draft link/modal states
+  const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
+  const [loadedDraft, setLoadedDraft] = useState<any | null>(null);
+  const [loadedDraftDuty, setLoadedDraftDuty] = useState<Duty | null>(null);
 
   // On mount, restore admin session if active
   useEffect(() => {
@@ -108,6 +131,44 @@ export default function App() {
       console.error("Firestore error:", error);
     }
   }, [firestoreDuties, loading, error, isAdmin]);
+
+  // Deep-linking to specific vacancy drafts via ?draftId=xxxx
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dId = params.get("draftId");
+    if (!dId) return;
+
+    const fetchDraft = async () => {
+      try {
+        const { doc, getDoc } = await import("firebase/firestore");
+        const draftDoc = await getDoc(doc(db, "vacancy_drafts", dId));
+        if (draftDoc.exists()) {
+          const draftData = draftDoc.data();
+          const fullDraft = { id: draftDoc.id, ...draftData };
+          setLoadedDraft(fullDraft);
+          
+          // Find corresponding duty
+          const matchingDuty = duties.find(d => d.id === draftData.dutyId) || {
+            id: draftData.dutyId || "custom",
+            category: draftData.shopName || "N/A",
+            jobTitle: draftData.positionTitle || "N/A",
+            lastName: "VACANT",
+            rank: "",
+            elementOrGroup: "",
+            dutyType: "U"
+          } as Duty;
+          
+          setLoadedDraftDuty(matchingDuty);
+          setIsDraftModalOpen(true);
+        } else {
+          console.warn("Draft document does not exist:", dId);
+        }
+      } catch (err) {
+        console.error("Error loading vacancy draft from URL parameter:", err);
+      }
+    };
+    fetchDraft();
+  }, [duties]);
 
   // Compute calculated values reactively when duties state updates
   const soldierSummaries = useMemo(() => {
@@ -254,6 +315,12 @@ export default function App() {
     setIsFormOpen(true);
   };
 
+  const handleOpenDraftForReview = (duty: Duty, draft: any) => {
+    setLoadedDraft(draft);
+    setLoadedDraftDuty(duty);
+    setIsDraftModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-200">
       
@@ -289,6 +356,8 @@ export default function App() {
         onShowMyShop={() => setMyShopTrigger(prev => prev + 1)}
         updateRequests={updateRequests}
         onEditDuty={handleTriggerEdit}
+        vacancyDrafts={vacancyDrafts}
+        onOpenDraft={handleOpenDraftForReview}
       />
 
       {/* Main Content Area */}
@@ -317,6 +386,14 @@ export default function App() {
           />
         )}
 
+        {activeTab === "vacancies" && (
+          <VacanciesView
+            drafts={vacancyDrafts}
+            isAdmin={isAdmin}
+            searchQuery={searchQuery}
+          />
+        )}
+
         {activeTab === "statistics" && (
           <StatisticsView
             duties={duties}
@@ -339,6 +416,22 @@ export default function App() {
         isHR={isHR}
         isAdmin={isAdmin}
       />
+
+      {/* Deep-linking Vacancy Announcement / Admin Review Modal */}
+      {isDraftModalOpen && loadedDraftDuty && (
+        <VacancyAnnouncementModal
+          duty={loadedDraftDuty}
+          initialDraft={loadedDraft}
+          onClose={() => {
+            setIsDraftModalOpen(false);
+            setLoadedDraft(null);
+            setLoadedDraftDuty(null);
+            // Clear URL search params beautifully
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.pushState({ path: newUrl }, "", newUrl);
+          }}
+        />
+      )}
 
       {/* Visual Instruction / Footnote Footer */}
       <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-[10px] text-slate-500 font-mono tracking-widest uppercase">

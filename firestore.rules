@@ -94,5 +94,11 @@ service cloud.firestore {
       allow read, create: if true;
       allow update, delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
     }
+
+    // Vacancy Drafts collection
+    match /vacancy_drafts/{draftId} {
+      allow read, create: if true;
+      allow update, delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024" || isAdmin();
+    }
   }
 }

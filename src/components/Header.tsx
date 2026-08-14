@@ -2,8 +2,8 @@ import React from "react";
 import { Search, ShieldAlert, ShieldCheck, LogOut, Info } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "duties" | "expirations" | "statistics";
-  setActiveTab: (tab: "duties" | "expirations" | "statistics") => void;
+  activeTab: "duties" | "expirations" | "vacancies" | "statistics";
+  setActiveTab: (tab: "duties" | "expirations" | "vacancies" | "statistics") => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isAdmin: boolean;
@@ -85,6 +85,16 @@ export default function Header({
               }`}
             >
               <span>Term Expirations</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("vacancies")}
+              className={`pb-1 text-xs font-semibold uppercase tracking-wider transition-all duration-150 flex items-center gap-1.5 ${
+                activeTab === "vacancies"
+                  ? "text-emerald-500 border-b-2 border-emerald-500"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <span>Vacancies</span>
             </button>
             <button
               onClick={() => setActiveTab("statistics")}

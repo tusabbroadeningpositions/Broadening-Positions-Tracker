@@ -57,6 +57,32 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["dutyId", "category", "jobTitle", "requestedLastName", "requestedRank", "requestedDateStarted", "requestor", "requestedScopeOfResponsibilities", "isNewHire", "isCsmApproved", "status", "createdAt"]
+    },
+    "VacancyDraft": {
+      "title": "VacancyDraft",
+      "description": "A user-submitted vacancy announcement draft.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dutyId": { "type": "string" },
+        "positionTitle": { "type": "string" },
+        "shopName": { "type": "string" },
+        "bpTitle": { "type": "string" },
+        "tierLevel": { "type": "string" },
+        "isSpecialty": { "type": "boolean" },
+        "termDuration": { "type": "string" },
+        "memoDate": { "type": "string" },
+        "pocRankName": { "type": "string" },
+        "pocEmail": { "type": "string" },
+        "closeDeadlineDate": { "type": "string" },
+        "signerNameCaps": { "type": "string" },
+        "signerRank": { "type": "string" },
+        "signerTitle": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "approved", "rejected", "filled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["dutyId", "positionTitle", "shopName", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -71,6 +97,10 @@
     "/update_requests/{requestId}": {
       "schema": "UpdateRequest",
       "description": "Collection of visitor-submitted update requests."
+    },
+    "/vacancy_drafts/{draftId}": {
+      "schema": "VacancyDraft",
+      "description": "Collection of user-submitted vacancy announcement drafts."
     }
   }
 }
