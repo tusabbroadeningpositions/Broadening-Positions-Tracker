@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Duty } from "../types";
 import { updateVacancyDraftStatus, deleteVacancyDraft } from "../data/dutiesStore";
+import { getShareableDraftUrl } from "../utils/shareUtils";
 import { 
   X, Check, AlertCircle, Calendar, FileText, Trash2, 
   Copy, ExternalLink, ThumbsUp, ThumbsDown, User, Mail, Award, Clock
@@ -82,7 +83,7 @@ The Broadening Positions Management Team`;
 
   const handleConfirmReject = async (draft: any) => {
     const feedback = rejectFeedback.trim();
-    const editUrl = `${window.location.origin}/?draftId=${draft.id}`;
+    const editUrl = getShareableDraftUrl(draft.id);
     const emailSubject = `Vacancy Announcement Draft ${draft.positionTitle}: Feedback`;
     const emailBody = `Your Vacancy Announcement Draft needs edits ${editUrl}
 
@@ -130,7 +131,7 @@ Broadening Positions Team`;
   };
 
   const handleCopyLink = (draftId: string) => {
-    const url = `${window.location.origin}/?draftId=${draftId}`;
+    const url = getShareableDraftUrl(draftId);
     navigator.clipboard.writeText(url)
       .then(() => {
         setCopiedId(draftId);

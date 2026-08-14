@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
 import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield } from "lucide-react";
 import { downloadVacancyMemo } from "../utils/docxExporter";
+import { getShareableDraftUrl } from "../utils/shareUtils";
 
 interface VacancyAnnouncementModalProps {
   duty: Duty;
@@ -129,7 +130,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         docId = docRef.id;
       }
 
-      const generatedUrl = `${window.location.origin}/?draftId=${docId}`;
+      const generatedUrl = getShareableDraftUrl(docId!);
       setShareableUrl(generatedUrl);
       setStatusMessage({
         type: "success",

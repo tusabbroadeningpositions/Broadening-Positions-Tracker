@@ -26,6 +26,7 @@ import { collection, query, orderBy } from "firebase/firestore";
 import { useCollection, useCollectionData } from "react-firebase-hooks/firestore";
 import { Shield, Sparkles, BookOpen, Clock, Users, Building2, LogIn } from "lucide-react";
 import VacancyAnnouncementModal from "./components/VacancyAnnouncementModal";
+import { extractDraftIdFromUrl } from "./utils/shareUtils";
 
 export default function App() {
   const [duties, setDuties] = useState<Duty[]>([]);
@@ -132,11 +133,26 @@ export default function App() {
     }
   }, [firestoreDuties, loading, error, isAdmin]);
 
-  // Deep-linking to specific vacancy drafts via ?draftId=xxxx
+  // Track if deep-linked draft ID was already fetched to prevent infinite loops
+  const fetchedDraftIdRef = useRef<string | null>(null);
+
+  // Deep-linking to specific vacancy drafts via ?draftId=xxxx or hash or SPA 404 redirect
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const dId = params.get("draftId");
+    const dId = extractDraftIdFromUrl();
     if (!dId) return;
+
+    // If we already fetched this exact draft ID, just update matching duty if duties changed
+    if (fetchedDraftIdRef.current === dId) {
+      if (loadedDraft && duties.length > 0) {
+        const matchingDuty = duties.find(d => d.id === loadedDraft.dutyId);
+        if (matchingDuty) {
+          setLoadedDraftDuty(matchingDuty);
+        }
+      }
+      return;
+    }
+
+    fetchedDraftIdRef.current = dId;
 
     const fetchDraft = async () => {
       try {
@@ -162,13 +178,14 @@ export default function App() {
           setIsDraftModalOpen(true);
         } else {
           console.warn("Draft document does not exist:", dId);
+          alert(`The requested vacancy announcement draft (ID: ${dId}) was not found in the system. It may have been removed or archived.`);
         }
       } catch (err) {
         console.error("Error loading vacancy draft from URL parameter:", err);
       }
     };
     fetchDraft();
-  }, [duties]);
+  }, [duties, loadedDraft]);
 
   // Compute calculated values reactively when duties state updates
   const soldierSummaries = useMemo(() => {
@@ -426,6 +443,7 @@ export default function App() {
             setIsDraftModalOpen(false);
             setLoadedDraft(null);
             setLoadedDraftDuty(null);
+            fetchedDraftIdRef.current = null;
             // Clear URL search params beautifully
             const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.pushState({ path: newUrl }, "", newUrl);
