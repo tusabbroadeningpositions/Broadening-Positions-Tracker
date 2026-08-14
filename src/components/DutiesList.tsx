@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Duty, SoldierSummary } from "../types";
 import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
-import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download } from "lucide-react";
+import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import DutyInspectorModal from "./DutyInspectorModal";
+import RequestUpdateModal from "./RequestUpdateModal";
 
 interface DutiesListProps {
   duties: Duty[];
@@ -45,6 +46,18 @@ export default function DutiesList({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedDutyForInspection, setSelectedDutyForInspection] = useState<Duty | null>(null);
   const sentinelRef = useRef<HTMLTableRowElement | null>(null);
+
+  // Request Update States
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestTargetDuty, setRequestTargetDuty] = useState<Duty | null>(null);
+  const [showSubmitSuccessToast, setShowSubmitSuccessToast] = useState(false);
+
+  useEffect(() => {
+    if (showSubmitSuccessToast) {
+      const timer = setTimeout(() => setShowSubmitSuccessToast(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSubmitSuccessToast]);
 
   // Get unique categories and elements for dropdown filter lists
   const uniqueCategories = useMemo(() => {
@@ -597,7 +610,7 @@ export default function DutiesList({
       <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-800 text-left">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800">
+            <thead className="sticky top-0 z-10 bg-slate-950 text-slate-400 border-b border-slate-800 shadow-sm">
               <tr>
                 <th scope="col" className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider">
                   Shop & Position Title
@@ -685,11 +698,9 @@ export default function DutiesList({
                     </select>
                   </div>
                 </th>
-                {(isAdmin || !!allowedCategory || isHR) && (
-                  <th scope="col" className="px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
+                <th scope="col" className="px-6 py-3.5 text-right text-[10px] font-bold uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-slate-900 divide-y divide-slate-800/80">
@@ -878,60 +889,69 @@ export default function DutiesList({
                         </button>
                       </td>
 
-                      {/* Admin Actions */}
-                      {(isAdmin || !!allowedCategory || isHR) && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
-                          {canEdit ? (
-                            deletingId === duty.id ? (
-                              <div className="flex items-center justify-end space-x-1.5 animate-pulse bg-rose-950/20 px-2 py-1 rounded border border-rose-900/40">
-                                <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Delete?</span>
-                                <button
-                                  onClick={() => {
-                                    onDeleteDuty(duty.id);
-                                    setDeletingId(null);
-                                  }}
-                                  className="bg-rose-600 hover:bg-rose-500 text-white rounded px-2 py-0.5 text-[9px] font-bold cursor-pointer transition-colors"
-                                >
-                                  Yes
-                                </button>
-                                <button
-                                  onClick={() => setDeletingId(null)}
-                                  className="bg-slate-800 hover:bg-slate-750 text-slate-300 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-700 cursor-pointer transition-colors"
-                                >
-                                  No
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-end space-x-2">
-                                <button
-                                  onClick={() => onEditDuty(duty)}
-                                  className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
-                                  title="Edit duty assignment"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => setDeletingId(duty.id)}
-                                  className="text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
-                                  title="Delete duty assignment"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )
-                          ) : (
-                            <div className="flex justify-end pr-2">
-                              <BadgeInfo className="w-4 h-4 text-slate-700" title="Unauthorized for this shop" />
+                      {/* Actions Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
+                        {canEdit ? (
+                          deletingId === duty.id ? (
+                            <div className="flex items-center justify-end space-x-1.5 animate-pulse bg-rose-950/20 px-2 py-1 rounded border border-rose-900/40">
+                              <span className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Delete?</span>
+                              <button
+                                onClick={() => {
+                                  onDeleteDuty(duty.id);
+                                  setDeletingId(null);
+                                }}
+                                className="bg-rose-600 hover:bg-rose-500 text-white rounded px-2 py-0.5 text-[9px] font-bold cursor-pointer transition-colors"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => setDeletingId(null)}
+                                className="bg-slate-800 hover:bg-slate-750 text-slate-300 rounded px-2 py-0.5 text-[9px] font-bold border border-slate-700 cursor-pointer transition-colors"
+                              >
+                                No
+                              </button>
                             </div>
-                          )}
-                        </td>
-                      )}
+                          ) : (
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => onEditDuty(duty)}
+                                className="text-slate-400 hover:text-white hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
+                                title="Edit duty assignment"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeletingId(duty.id)}
+                                className="text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded p-1.5 transition-colors cursor-pointer"
+                                title="Delete duty assignment"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )
+                        ) : (
+                          <div className="flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRequestTargetDuty(duty);
+                                setIsRequestModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-emerald-600 border border-slate-750 hover:border-emerald-500 text-slate-300 hover:text-white rounded text-[10px] font-bold uppercase tracking-wide transition-all duration-150 cursor-pointer select-none"
+                              title="Request personnel update for this position"
+                            >
+                              <Send className="w-2.5 h-2.5 shrink-0" />
+                              <span>Request</span>
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
                 {visibleCount < filteredDuties.length && (
                   <tr ref={sentinelRef} className="bg-slate-950/10">
-                    <td colSpan={isAdmin || !!allowedCategory ? 7 : 6} className="px-6 py-4 text-center">
+                    <td colSpan={7} className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center space-x-2 text-xs text-slate-400 font-medium font-mono py-2">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
                         <span>LOADING MORE BROADENING POSITIONS...</span>
@@ -941,7 +961,7 @@ export default function DutiesList({
                 )}
               </>) : (
                 <tr>
-                  <td colSpan={isAdmin || !!allowedCategory ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <AlertCircle className="w-8 h-8 text-slate-600" />
                       <p className="text-sm font-semibold text-slate-400">No broadening positions found matching your filters.</p>
@@ -981,6 +1001,34 @@ export default function DutiesList({
           duty={selectedDutyForInspection} 
           onClose={() => setSelectedDutyForInspection(null)} 
         />
+      )}
+
+      {/* Visitor Request Update Modal */}
+      {isRequestModalOpen && requestTargetDuty && (
+        <RequestUpdateModal
+          isOpen={isRequestModalOpen}
+          duty={requestTargetDuty}
+          onClose={() => {
+            setIsRequestModalOpen(false);
+            setRequestTargetDuty(null);
+          }}
+          onSubmitSuccess={() => {
+            setShowSubmitSuccessToast(true);
+          }}
+        />
+      )}
+
+      {/* Success toast notification */}
+      {showSubmitSuccessToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/40 shadow-2xl px-5 py-3 rounded-xl z-[70] flex items-center space-x-3 text-emerald-400 font-semibold animate-in slide-in-from-top-4 duration-200">
+          <div className="p-1 bg-emerald-500/10 rounded-full">
+            <Check className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-100">Request Submitted Successfully</p>
+            <p className="text-[10px] text-slate-400 font-normal">The administrative team has been notified of your request.</p>
+          </div>
+        </div>
       )}
     </div>
   );

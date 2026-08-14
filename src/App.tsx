@@ -6,7 +6,7 @@ import TermExpirationsView from "./components/TermExpirationsView";
 import StatisticsView from "./components/StatisticsView";
 import DutyFormModal from "./components/DutyFormModal";
 
-import { Duty } from "./types";
+import { Duty, UpdateRequest } from "./types";
 import { 
   loadDuties, 
   saveDuties, 
@@ -34,6 +34,12 @@ export default function App() {
   const dutiesRef = collection(db, "duties");
   const q = query(dutiesRef, orderBy("lastName", "asc"));
   const [firestoreDuties, loading, error] = useCollectionData(q);
+
+  // Load update requests from Firestore
+  const requestsRef = collection(db, "update_requests");
+  const requestsQ = query(requestsRef, orderBy("createdAt", "desc"));
+  const [firestoreRequests] = useCollectionData(requestsQ);
+  const updateRequests = (firestoreRequests || []) as UpdateRequest[];
   
   const hasSeededRef = useRef(false);
 
@@ -281,6 +287,8 @@ export default function App() {
         showLoginModal={showLoginModal}
         setShowLoginModal={setShowLoginModal}
         onShowMyShop={() => setMyShopTrigger(prev => prev + 1)}
+        updateRequests={updateRequests}
+        onEditDuty={handleTriggerEdit}
       />
 
       {/* Main Content Area */}

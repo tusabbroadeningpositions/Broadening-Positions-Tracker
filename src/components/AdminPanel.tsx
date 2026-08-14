@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { Duty } from "../types";
+import { Duty, UpdateRequest } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
+import UpdateRequestsConsole from "./UpdateRequestsConsole";
 
 interface AdminPanelProps {
   isAdmin: boolean;
@@ -18,6 +19,8 @@ interface AdminPanelProps {
   allDuties: Duty[];
   showLoginModal: boolean;
   setShowLoginModal: (show: boolean) => void;
+  updateRequests?: UpdateRequest[];
+  onEditDuty?: (duty: Duty) => void;
 }
 
 export default function AdminPanel({
@@ -34,12 +37,15 @@ export default function AdminPanel({
   onRenameCategory,
   onDeleteCategory,
   onShowMyShop,
+  updateRequests = [],
+  onEditDuty = () => {},
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showRequestsConsole, setShowRequestsConsole] = useState(false);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +170,52 @@ export default function AdminPanel({
     }
   };
 
+  const ADMIN_SHOPS = [
+    "Ceremonial Band", 
+    "Concert Band", 
+    "Downrange", 
+    "Blues", 
+    "Strings", 
+    "Technical Support Group", 
+    "Chorus"
+  ];
+
+  // Filter requests based on admin scope
+  const filteredRequests = updateRequests.filter(req => {
+    const duty = allDuties.find(d => d.id === req.dutyId);
+    if (!duty) return false;
+
+    // Check if the duty category belongs to one of the identified shops
+    // Using fuzzy match (startsWith) because database categories often have extra info like "Downrange (MSG Roberts, GL)"
+    const isShopExclusive = ADMIN_SHOPS.some(shop => 
+      duty.category.trim().toLowerCase().startsWith(shop.toLowerCase())
+    );
+    
+    // HR handles non-tiered command appointed positions
+    // BUT! Per user request, shop-specific positions should stay in the shop admin ONLY.
+    // So if it's a shop position, it's not HR-exclusive even if it matches the HR criteria.
+    const isHRExclusive = !!duty.isCommandAppointed && !!duty.isNonTiered && !isShopExclusive;
+
+    if (isHR) {
+      // HR only sees their assigned scope (non-tiered command appointed, NOT in a specific shop)
+      return isHRExclusive;
+    }
+
+    if (allowedCategory) {
+      // Shop Admin only sees their shop's requests
+      return duty.category.trim().toLowerCase().startsWith(allowedCategory.toLowerCase());
+    }
+
+    if (isAdmin) {
+      // Master Admin sees everything EXCEPT what is explicitly routed to HR or Shop Admins
+      return !isHRExclusive && !isShopExclusive;
+    }
+
+    return false;
+  });
+
+  const pendingCount = filteredRequests.filter(r => r.status === "pending").length;
+
   return (
     <>
       {/* Admin Utility Bar - Visible ONLY when logged in */}
@@ -218,6 +270,23 @@ export default function AdminPanel({
                 >
                   <Tag className="w-3.5 h-3.5 text-sky-400" />
                   <span>Manage Shops</span>
+                </button>
+              )}
+
+              {/* Update Requests Button with Badge */}
+              {(isAdmin || isHR || !!allowedCategory) && (
+                <button
+                  onClick={() => setShowRequestsConsole(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 border border-indigo-800/50 rounded text-xs font-semibold shadow-sm transition duration-150 relative cursor-pointer"
+                  title="View visitor update requests"
+                >
+                  <Shield className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Update Requests</span>
+                  {pendingCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1.5 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center border border-slate-900 animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
                 </button>
               )}
 
@@ -353,6 +422,14 @@ export default function AdminPanel({
           </div>
         </div>
       )}
+      {/* Update Requests Console Overlay */}
+      <UpdateRequestsConsole
+        isOpen={showRequestsConsole}
+        onClose={() => setShowRequestsConsole(false)}
+        requests={filteredRequests}
+        allDuties={allDuties}
+        onEditDuty={onEditDuty}
+      />
     </>
   );
 }

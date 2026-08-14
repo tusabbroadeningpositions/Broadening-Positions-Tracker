@@ -31,6 +31,32 @@
         "email": { "type": "string" }
       },
       "required": ["email"]
+    },
+    "UpdateRequest": {
+      "title": "UpdateRequest",
+      "description": "A user-submitted request to update a broadening position's personnel details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dutyId": { "type": "string" },
+        "category": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "currentLastName": { "type": "string" },
+        "currentRank": { "type": "string" },
+        "currentDateStarted": { "type": "string" },
+        "requestedLastName": { "type": "string" },
+        "requestedRank": { "type": "string" },
+        "requestedDateStarted": { "type": "string" },
+        "requestor": { "type": "string" },
+        "requestedScopeOfResponsibilities": { "type": "string" },
+        "isNewHire": { "type": "boolean" },
+        "isCsmApproved": { "type": "boolean" },
+        "justification": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["dutyId", "category", "jobTitle", "requestedLastName", "requestedRank", "requestedDateStarted", "requestor", "requestedScopeOfResponsibilities", "isNewHire", "isCsmApproved", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -41,6 +67,10 @@
     "/admins/{adminId}": {
       "schema": "Admin",
       "description": "List of authorized admins."
+    },
+    "/update_requests/{requestId}": {
+      "schema": "UpdateRequest",
+      "description": "Collection of visitor-submitted update requests."
     }
   }
 }

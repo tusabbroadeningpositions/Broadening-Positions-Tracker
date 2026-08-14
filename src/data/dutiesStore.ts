@@ -1,4 +1,4 @@
-import { Duty, SoldierSummary } from "../types";
+import { Duty, SoldierSummary, UpdateRequest } from "../types";
 import { parseRawDuties, isCommandAppointedDuty } from "./rawDuties";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
@@ -383,4 +383,75 @@ export function getTermExpirationStatus(
 
   return "ok";
 }
+
+/**
+ * Submit an update request for a broadening position.
+ */
+export async function submitUpdateRequest(reqData: Omit<UpdateRequest, "id" | "status" | "createdAt">): Promise<void> {
+  const id = `req_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const path = `update_requests/${id}`;
+  const requestObj: UpdateRequest = {
+    ...reqData,
+    id,
+    status: "pending",
+    createdAt: new Date().toISOString()
+  };
+  try {
+    await setDoc(doc(db, "update_requests", id), requestObj);
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Reject/update request status.
+ */
+export async function updateRequestStatus(id: string, status: "approved" | "rejected"): Promise<void> {
+  const path = `update_requests/${id}`;
+  try {
+    await updateDoc(doc(db, "update_requests", id), {
+      status,
+      admin_secret: "DUTY_TRACKER_SECRET_2024",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Approve update request: updates request status and original duty document atomically.
+ */
+export async function approveUpdateRequest(req: UpdateRequest): Promise<void> {
+  const batch = writeBatch(db);
+  const reqRef = doc(db, "update_requests", req.id);
+  const dutyRef = doc(db, "duties", req.dutyId);
+  const updatedAt = new Date().toISOString();
+
+  batch.update(reqRef, {
+    status: "approved",
+    admin_secret: "DUTY_TRACKER_SECRET_2024",
+    updatedAt
+  });
+
+  batch.update(dutyRef, {
+    lastName: req.requestedLastName,
+    rank: req.requestedRank,
+    dateStarted: req.requestedDateStarted,
+    scopeOfResponsibilities: req.requestedScopeOfResponsibilities,
+    admin_secret: "DUTY_TRACKER_SECRET_2024",
+    updatedAt
+  });
+
+  try {
+    await batch.commit();
+
+    if (req.requestedLastName && req.requestedLastName.toUpperCase() !== "VACANT") {
+      await syncSoldierRankToFirestore(req.requestedLastName, req.requestedRank);
+    }
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, `approve_request/${req.id}`);
+  }
+}
+
 

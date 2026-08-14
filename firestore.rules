@@ -50,6 +50,25 @@ service cloud.firestore {
         && (!('updatedAt' in data) || data.updatedAt is string);
     }
 
+    function isValidUpdateRequest(data) {
+      return data.keys().hasAll(['dutyId', 'category', 'jobTitle', 'requestedLastName', 'requestedRank', 'requestedDateStarted', 'requestor', 'requestedScopeOfResponsibilities', 'isNewHire', 'isCsmApproved', 'status', 'createdAt'])
+        && data.dutyId is string && data.dutyId.size() <= 128
+        && data.category is string && data.category.size() <= 100
+        && data.jobTitle is string && data.jobTitle.size() <= 200
+        && data.requestedLastName is string && data.requestedLastName.size() <= 100
+        && data.requestedRank is string && data.requestedRank.size() <= 50
+        && data.requestedDateStarted is string && data.requestedDateStarted.size() <= 100
+        && data.requestor is string && data.requestor.size() <= 150
+        && data.requestedScopeOfResponsibilities is string && data.requestedScopeOfResponsibilities.size() <= 2000
+        && data.isNewHire is bool
+        && data.isCsmApproved is bool
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.createdAt is string
+        && (!('justification' in data) || data.justification is string)
+        && (!('updatedAt' in data) || data.updatedAt is string)
+        && (!('admin_secret' in data) || data.admin_secret is string);
+    }
+
     // --- Collections ---
     
     // Admins collection: only readable/writable by existing admins, 
@@ -68,6 +87,12 @@ service cloud.firestore {
       allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
                            && isValidDuty(request.resource.data);
       allow delete: if true; 
+    }
+
+    // Update Requests collection
+    match /update_requests/{requestId} {
+      allow read, create: if true;
+      allow update, delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
     }
   }
 }

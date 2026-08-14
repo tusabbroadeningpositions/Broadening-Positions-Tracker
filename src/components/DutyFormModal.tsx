@@ -70,7 +70,7 @@ export default function DutyFormModal({
       setIsNonTiered(editingDuty.isNonTiered ?? false);
       setScopeOfResponsibilities(editingDuty.scopeOfResponsibilities || "");
       setSeniorRaterAbbreviation(editingDuty.seniorRaterAbbreviation || "");
-      setShowScopeInput(!!editingDuty.scopeOfResponsibilities || !!editingDuty.seniorRaterAbbreviation);
+      setShowScopeInput(false);
     } else {
       // Set sensible defaults for a new duty
       let initialCategory = allowedCategory || "";
@@ -394,7 +394,9 @@ export default function DutyFormModal({
                     onClick={() => setShowScopeInput(true)}
                     className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold underline underline-offset-2 transition-colors cursor-pointer"
                   >
-                    + add scope of responsibilities / senior rater abbreviation
+                    {scopeOfResponsibilities || seniorRaterAbbreviation
+                      ? "✎ edit scope of responsibilities / senior rater abbreviation"
+                      : "+ add scope of responsibilities / senior rater abbreviation"}
                   </button>
                   {(scopeOfResponsibilities || seniorRaterAbbreviation) && (
                     <div className="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1.5 bg-slate-900/50 p-2 rounded border border-slate-800">

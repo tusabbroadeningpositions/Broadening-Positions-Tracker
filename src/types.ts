@@ -32,3 +32,24 @@ export interface FilterOptions {
   shopFilter: string; // "All" or e.g. "element:CT", "category:Auditions", etc.
   overloadFilter: "all" | "overloaded" | "normal";
 }
+
+export interface UpdateRequest {
+  id: string;
+  dutyId: string;
+  category: string;
+  jobTitle: string;
+  currentLastName: string;
+  currentRank: string;
+  currentDateStarted: string;
+  requestedLastName: string;
+  requestedRank: string;
+  requestedDateStarted: string;
+  requestor: string;
+  requestedScopeOfResponsibilities: string;
+  isNewHire: boolean;
+  isCsmApproved: boolean;
+  justification?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt?: string;
+}
