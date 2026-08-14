@@ -224,6 +224,7 @@ export const downloadVacancyMemo = (draft: any) => {
     const url = URL.createObjectURL(out);
     const a = document.createElement("a");
     a.href = url;
+    a.target = "_blank";
     const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
     a.download = `Vacancy_Announcement_${sanitizedTitle}.docx`;
     document.body.appendChild(a);
@@ -444,6 +445,7 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
+    a.target = "_blank";
     a.download = `Application_Memo_${safeTitle}_${safeName}.docx`;
     document.body.appendChild(a);
     a.click();
