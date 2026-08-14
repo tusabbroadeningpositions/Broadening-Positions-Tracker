@@ -20,6 +20,7 @@ export default function CategoryManagerModal({
 }: CategoryManagerModalProps) {
   const [categories, setCategories] = useState<string[]>([]);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
 
   useEffect(() => {
@@ -44,11 +45,13 @@ export default function CategoryManagerModal({
   };
 
   const handleDeleteClick = (cat: string) => {
-    const dutyCount = duties.filter(d => d.category === cat).length;
-    const warning = `Are you sure you want to delete the "${cat}" shop?\n\nThis will PERMANENTLY DELETE all ${dutyCount} positions within this shop.\n\nThis action cannot be undone.`;
-    
-    if (window.confirm(warning)) {
-      onDeleteCategory(cat);
+    setDeletingCategory(cat);
+  };
+
+  const handleConfirmDeleteCategory = () => {
+    if (deletingCategory) {
+      onDeleteCategory(deletingCategory);
+      setDeletingCategory(null);
     }
   };
 
@@ -162,6 +165,57 @@ export default function CategoryManagerModal({
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deletingCategory && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-[60]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                <h4 className="text-sm font-bold text-slate-100">Delete Shop</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingCategory(null)}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Are you sure you want to delete the <strong className="text-white">"{deletingCategory}"</strong> shop?
+              </p>
+              <p className="text-xs font-bold text-rose-400">
+                This will PERMANENTLY DELETE all {duties.filter(d => d.category === deletingCategory).length} positions within this shop.
+              </p>
+              <p className="text-[11px] text-slate-500">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeletingCategory(null)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded transition cursor-pointer flex items-center space-x-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Shop & Positions</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

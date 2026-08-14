@@ -19,6 +19,7 @@ export default function RequestUpdateModal({
   onSubmitSuccess,
 }: RequestUpdateModalProps) {
   const [requestor, setRequestor] = useState("");
+  const [requestorEmail, setRequestorEmail] = useState("");
   const [requestedLastName, setRequestedLastName] = useState(duty.lastName);
   const [requestedRank, setRequestedRank] = useState(duty.rank || "SPC");
   const [requestedDateStarted, setRequestedDateStarted] = useState(duty.dateStarted || "");
@@ -36,6 +37,10 @@ export default function RequestUpdateModal({
     e.preventDefault();
     if (!requestor.trim()) {
       setError("Your Name (Requestor) is required.");
+      return;
+    }
+    if (!requestorEmail.trim()) {
+      setError("Your Email Address (.mil) is required.");
       return;
     }
     if (!requestedLastName.trim()) {
@@ -58,10 +63,12 @@ export default function RequestUpdateModal({
         currentLastName: duty.lastName,
         currentRank: duty.rank,
         currentDateStarted: duty.dateStarted || "N/A",
+        currentScopeOfResponsibilities: duty.scopeOfResponsibilities || "",
         requestedLastName: requestedLastName.trim(),
         requestedRank,
         requestedDateStarted: requestedDateStarted.trim(),
         requestor: requestor.trim(),
+        requestorEmail: requestorEmail.trim(),
         requestedScopeOfResponsibilities: requestedScopeOfResponsibilities.trim(),
         isNewHire,
         isCsmApproved: isNewHire ? isCsmApproved : false,
@@ -131,18 +138,34 @@ export default function RequestUpdateModal({
 
           {/* New Requested Fields */}
           <div className="space-y-3.5">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-yellow-400 mb-1">
-                Who is making this request? *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. SFC Smith or HR Office"
-                className="w-full px-3 py-2 border border-slate-800 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-950 text-slate-200 text-xs font-semibold"
-                value={requestor}
-                onChange={(e) => setRequestor(e.target.value)}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-yellow-400 mb-1">
+                  Who is making this request? *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. SFC Smith or HR Office"
+                  className="w-full px-3 py-2 border border-slate-800 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-950 text-slate-200 text-xs font-semibold"
+                  value={requestor}
+                  onChange={(e) => setRequestor(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-yellow-400 mb-1">
+                  Your Email Address (.mil) *
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. john.smith.mil@army.mil"
+                  className="w-full px-3 py-2 border border-slate-800 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-950 text-slate-200 text-xs font-semibold"
+                  value={requestorEmail}
+                  onChange={(e) => setRequestorEmail(e.target.value)}
+                />
+              </div>
             </div>
 
             <div>

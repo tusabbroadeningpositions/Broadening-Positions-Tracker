@@ -420,6 +420,18 @@ export async function updateRequestStatus(id: string, status: "approved" | "reje
 }
 
 /**
+ * Delete an update request document.
+ */
+export async function deleteUpdateRequest(id: string): Promise<void> {
+  const path = `update_requests/${id}`;
+  try {
+    await deleteDoc(doc(db, "update_requests", id));
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.DELETE, path);
+  }
+}
+
+/**
  * Approve update request: updates request status and original duty document atomically.
  */
 export async function approveUpdateRequest(req: UpdateRequest): Promise<void> {

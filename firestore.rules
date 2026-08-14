@@ -92,7 +92,8 @@ service cloud.firestore {
     // Update Requests collection
     match /update_requests/{requestId} {
       allow read, create: if true;
-      allow update, delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
+      allow update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
+      allow delete: if true;
     }
 
     // Vacancy Drafts collection

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
-import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield } from "lucide-react";
+import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip } from "lucide-react";
 import { downloadVacancyMemo } from "../utils/docxExporter";
 import { getShareableDraftUrl } from "../utils/shareUtils";
 
@@ -44,6 +44,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [shareableUrl, setShareableUrl] = useState<string | null>(null);
   const [copiedShareable, setCopiedShareable] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmailReminderModal, setShowEmailReminderModal] = useState(false);
 
   // 1. Basic Memo Info states
   const [positionTitle, setPositionTitle] = useState(initialDraft?.positionTitle || duty.jobTitle || "");
@@ -658,7 +659,71 @@ ${pocRankName || "[POC Rank & Name]"}
 ${pocEmail || "[POC email]"}`;
               const mailtoUrl = `mailto:broadeningpositions@army.mil?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
               return (
-                <span>Email vacancy announcement draft to <a href={mailtoUrl} className="text-emerald-500 hover:underline font-medium">broadeningpositions@army.mil</a> for review, approval, and dissemination.</span>
+                <>
+                  <span>
+                    Alternatively, you can email your vacancy announcement to{" "}
+                    <a
+                      href={mailtoUrl}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowEmailReminderModal(true);
+                      }}
+                      className="text-emerald-500 hover:underline font-medium cursor-pointer"
+                    >
+                      broadeningpositions@army.mil
+                    </a>{" "}
+                    for review, approval, and dissemination.
+                  </span>
+
+                  {/* Attachment Warning Modal */}
+                  {showEmailReminderModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-[90]">
+                      <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-5 space-y-4 text-left">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                          <div className="flex items-center space-x-2">
+                            <Paperclip className="w-5 h-5 text-amber-400" />
+                            <h4 className="text-sm font-bold text-slate-100">Attachment Reminder</h4>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowEmailReminderModal(false)}
+                            className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg flex items-start space-x-3">
+                          <Paperclip className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <h5 className="text-xs font-bold text-amber-300">Don't forget to attach the Word document!</h5>
+                            <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                              Make sure to attach your generated <strong>.docx</strong> vacancy announcement memo before sending the email to <strong>broadeningpositions@army.mil</strong>.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setShowEmailReminderModal(false)}
+                            className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded hover:bg-slate-800 transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <a
+                            href={mailtoUrl}
+                            onClick={() => setShowEmailReminderModal(false)}
+                            className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded transition cursor-pointer flex items-center space-x-1.5 shadow-lg shadow-emerald-950"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            <span>Open Email Client</span>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               );
             })()}
           </div>

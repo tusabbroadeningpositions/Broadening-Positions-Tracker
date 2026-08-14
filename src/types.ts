@@ -41,10 +41,12 @@ export interface UpdateRequest {
   currentLastName: string;
   currentRank: string;
   currentDateStarted: string;
+  currentScopeOfResponsibilities?: string;
   requestedLastName: string;
   requestedRank: string;
   requestedDateStarted: string;
   requestor: string;
+  requestorEmail?: string;
   requestedScopeOfResponsibilities: string;
   isNewHire: boolean;
   isCsmApproved: boolean;

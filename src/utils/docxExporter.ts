@@ -177,6 +177,13 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
         });
       }
       
+      // 4. Clean Paragraph 4 to remove the CD Teams page link and sentence
+      const p4Regex = new RegExp(`<w:p [^>]*w14:paraId="2B9AC5F9"[^>]*>[\\s\\S]*?<\\/w:p>`);
+      if (p4Regex.test(xmlText)) {
+        const cleanP4Xml = `<w:p w14:paraId="2B9AC5F9" w14:textId="57168C55" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature.</w:t></w:r></w:p>`;
+        xmlText = xmlText.replace(p4Regex, cleanP4Xml);
+      }
+      
       zip.file(filename, xmlText);
     }
   });

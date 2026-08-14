@@ -28,6 +28,7 @@ export default function VacancyDraftsConsole({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectFeedback, setRejectFeedback] = useState<string>("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -114,14 +115,17 @@ Broadening Positions Team`;
     setRejectFeedback("");
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this vacancy draft permanently?")) {
-      return;
-    }
-    setProcessingId(id);
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const handleConfirmDeleteDraft = async () => {
+    if (!deletingId) return;
+    setProcessingId(deletingId);
     setErrorMessage(null);
     try {
-      await deleteVacancyDraft(id);
+      await deleteVacancyDraft(deletingId);
+      setDeletingId(null);
     } catch (err: any) {
       console.error(err);
       setErrorMessage("Failed to delete vacancy draft.");
@@ -414,6 +418,55 @@ Broadening Positions Team`;
           )}
         </div>
       </div>
+
+      {/* Delete Draft Confirmation Modal */}
+      {deletingId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                <h4 className="text-sm font-bold text-slate-100">Confirm Draft Deletion</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingId(null)}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Are you sure you want to permanently delete this vacancy announcement draft?
+              </p>
+              <p className="text-[11px] text-slate-500 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeletingId(null)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white rounded hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={processingId !== null}
+                onClick={handleConfirmDeleteDraft}
+                className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded transition cursor-pointer disabled:opacity-50 flex items-center space-x-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{processingId === deletingId ? "Deleting..." : "Delete Permanently"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
