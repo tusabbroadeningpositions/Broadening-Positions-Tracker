@@ -357,6 +357,25 @@ export default function DutiesList({
     setVisibleCount(25);
   };
 
+  const handleAnnounceVacancyFromScratch = () => {
+    const scratchDuty: Duty = {
+      id: "scratch-" + Date.now(),
+      category: "",
+      jobTitle: "",
+      lastName: "Vacant",
+      rank: "",
+      dateStarted: "",
+      termLength: "",
+      termEndDate: "",
+      elementOrGroup: "",
+      tierLevel: 1,
+      specialized: false,
+      dutyType: "N/A",
+      scopeOfResponsibilities: ""
+    };
+    setSelectedDutyForVacancy(scratchDuty);
+  };
+
   const handleExportPDF = () => {
     const doc = new jsPDF({
       orientation: 'landscape',
@@ -545,14 +564,24 @@ export default function DutiesList({
             </button>
           )}
           
-          <button
-            onClick={handleExportPDF}
-            className="ml-auto text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95"
-            disabled={filteredDuties.length === 0}
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export Filtered PDF
-          </button>
+          <div className="ml-auto flex items-center space-x-2">
+            <button
+              onClick={handleAnnounceVacancyFromScratch}
+              className="text-xs bg-orange-600 hover:bg-orange-500 text-white font-bold py-1.5 px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              Announce Vacancy
+            </button>
+
+            <button
+              onClick={handleExportPDF}
+              className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded flex items-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+              disabled={filteredDuties.length === 0}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export Filtered PDF
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
