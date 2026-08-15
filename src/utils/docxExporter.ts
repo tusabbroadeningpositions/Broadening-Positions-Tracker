@@ -218,52 +218,99 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
   });
 };
 
-export const downloadVacancyMemo = (draft: any) => {
+export const downloadVacancyMemo = async (draft: any) => {
   try {
     const out = generateVacancyMemoBlob(draft);
-    const url = URL.createObjectURL(out);
-    
-    // More aggressive approach for new tab in iframe environments: window.open
-    // and a programmatically clicked anchor with target="_blank"
     const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
     const filename = `Vacancy_Announcement_${sanitizedTitle}.docx`;
 
-    // Open a new tab first to satisfy the user request
-    const newTab = window.open("", "_blank");
-    
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
+    // 1. Convert to base64 to pass to the new tab
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(out);
+    });
+    const base64DataUrl = await base64Promise;
+    const base64Content = base64DataUrl.split(',')[1];
 
-    if (newTab) {
-      // Trigger download from the new tab's document to ensure it happens there
-      try {
-        newTab.document.body.appendChild(a);
-        a.click();
-        // Give it a moment to start then close if it's just a download tab
-        setTimeout(() => {
-          if (!newTab.closed) newTab.close();
-        }, 3000);
-      } catch (e) {
-        // Cross-origin fallback
-        document.body.appendChild(a);
-        a.click();
-      }
-    } else {
-      // Fallback for popup blockers
-      document.body.appendChild(a);
-      a.click();
+    // 2. Open a new tab
+    const newTab = window.open("", "_blank");
+    if (!newTab) {
+      alert("Please allow popups to export the document in a new tab.");
+      return;
     }
-    
-    // Clean up
-    setTimeout(() => {
-      if (document.body.contains(a)) {
-        document.body.removeChild(a);
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    }, 2000);
+
+    // 3. Write the download script into the new tab
+    newTab.document.write(`
+      <html>
+        <head>
+          <title>Exporting ${filename}</title>
+          <style>
+            body { 
+              background: #0f172a; 
+              color: #94a3b8; 
+              font-family: sans-serif; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              height: 100vh; 
+              margin: 0; 
+              text-align: center;
+            }
+            .container { padding: 20px; }
+            .spinner { 
+              border: 3px solid #1e293b; 
+              border-top: 3px solid #10b981; 
+              border-radius: 50%; 
+              width: 32px; 
+              height: 32px; 
+              animation: spin 1s linear infinite; 
+              margin: 0 auto 20px;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .title { font-size: 18px; font-weight: bold; color: white; margin-bottom: 8px; }
+            .status { font-size: 14px; margin-bottom: 4px; }
+            .note { font-size: 12px; color: #64748b; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="spinner"></div>
+            <div class="title">Generating Word Document</div>
+            <div class="status">Your download should start automatically from this tab.</div>
+            <div class="note">You can close this tab after the download finishes.</div>
+          </div>
+          <script>
+            try {
+              const base64 = "${base64Content}";
+              const filename = "${filename}";
+              const byteCharacters = atob(base64);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+              const url = URL.createObjectURL(blob);
+              
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              
+              // We leave the URL and tab open as requested
+            } catch (err) {
+              console.error("Export failed in new tab:", err);
+              document.querySelector('.status').innerText = "Download failed. Please try again.";
+              document.querySelector('.status').style.color = "#fb7185";
+            }
+          <\/script>
+        </body>
+      </html>
+    `);
+    newTab.document.close();
+
   } catch (error) {
     console.error("Failed to generate memo Word document:", error);
     alert("Failed to export Word document. Please contact system administrator.");
@@ -476,39 +523,94 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
     const safeTitle = (data.positionTitle || "Position").replace(/[^a-zA-Z0-9_-]/g, "_");
     const safeName = (data.soldierNameCaps || "Applicant").replace(/[^a-zA-Z0-9_-]/g, "_");
     const filename = `Application_Memo_${safeTitle}_${safeName}.docx`;
-    const url = URL.createObjectURL(blob);
-    
-    const newTab = window.open("", "_blank");
-    
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
 
-    if (newTab) {
-      try {
-        newTab.document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          if (!newTab.closed) newTab.close();
-        }, 3000);
-      } catch (e) {
-        document.body.appendChild(a);
-        a.click();
-      }
-    } else {
-      document.body.appendChild(a);
-      a.click();
+    // 1. Convert to base64 to pass to the new tab
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    const base64DataUrl = await base64Promise;
+    const base64Content = base64DataUrl.split(',')[1];
+
+    // 2. Open a new tab
+    const newTab = window.open("", "_blank");
+    if (!newTab) {
+      alert("Please allow popups to export the document in a new tab.");
+      return;
     }
-    
-    // Cleanup with delay
-    setTimeout(() => {
-      if (document.body.contains(a)) {
-        document.body.removeChild(a);
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    }, 2000);
+
+    // 3. Write the download script into the new tab
+    newTab.document.write(`
+      <html>
+        <head>
+          <title>Exporting ${filename}</title>
+          <style>
+            body { 
+              background: #0f172a; 
+              color: #94a3b8; 
+              font-family: sans-serif; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              height: 100vh; 
+              margin: 0; 
+              text-align: center;
+            }
+            .container { padding: 20px; }
+            .spinner { 
+              border: 3px solid #1e293b; 
+              border-top: 3px solid #10b981; 
+              border-radius: 50%; 
+              width: 32px; 
+              height: 32px; 
+              animation: spin 1s linear infinite; 
+              margin: 0 auto 20px;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .title { font-size: 18px; font-weight: bold; color: white; margin-bottom: 8px; }
+            .status { font-size: 14px; margin-bottom: 4px; }
+            .note { font-size: 12px; color: #64748b; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="spinner"></div>
+            <div class="title">Generating Word Document</div>
+            <div class="status">Your download should start automatically from this tab.</div>
+            <div class="note">You can close this tab after the download finishes.</div>
+          </div>
+          <script>
+            try {
+              const base64 = "${base64Content}";
+              const filename = "${filename}";
+              const byteCharacters = atob(base64);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+              const url = URL.createObjectURL(blob);
+              
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              
+              // We leave the URL and tab open as requested
+            } catch (err) {
+              console.error("Export failed in new tab:", err);
+              document.querySelector('.status').innerText = "Download failed. Please try again.";
+              document.querySelector('.status').style.color = "#fb7185";
+            }
+          <\/script>
+        </body>
+      </html>
+    `);
+    newTab.document.close();
+
   } catch (err) {
     console.error("Failed to generate application memo:", err);
     alert("Error generating document: " + (err instanceof Error ? err.message : String(err)));

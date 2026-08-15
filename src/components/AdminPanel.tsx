@@ -401,7 +401,7 @@ export default function AdminPanel({
               <button
                 onClick={() => {
                   setShowLoginModal(false);
-                  setLoginError(false);
+                  setLoginError(null);
                   setPassword("");
                 }}
                 className="text-slate-400 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-850"
@@ -452,7 +452,7 @@ export default function AdminPanel({
                   type="button"
                   onClick={() => {
                     setShowLoginModal(false);
-                    setLoginError(false);
+                    setLoginError(null);
                     setPassword("");
                   }}
                   className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition duration-150"
