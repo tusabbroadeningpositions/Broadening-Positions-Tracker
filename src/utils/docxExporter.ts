@@ -222,15 +222,48 @@ export const downloadVacancyMemo = (draft: any) => {
   try {
     const out = generateVacancyMemoBlob(draft);
     const url = URL.createObjectURL(out);
+    
+    // More aggressive approach for new tab in iframe environments: window.open
+    // and a programmatically clicked anchor with target="_blank"
+    const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
+    const filename = `Vacancy_Announcement_${sanitizedTitle}.docx`;
+
+    // Open a new tab first to satisfy the user request
+    const newTab = window.open("", "_blank");
+    
     const a = document.createElement("a");
     a.href = url;
+    a.download = filename;
     a.target = "_blank";
-    const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
-    a.download = `Vacancy_Announcement_${sanitizedTitle}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.rel = "noopener noreferrer";
+
+    if (newTab) {
+      // Trigger download from the new tab's document to ensure it happens there
+      try {
+        newTab.document.body.appendChild(a);
+        a.click();
+        // Give it a moment to start then close if it's just a download tab
+        setTimeout(() => {
+          if (!newTab.closed) newTab.close();
+        }, 3000);
+      } catch (e) {
+        // Cross-origin fallback
+        document.body.appendChild(a);
+        a.click();
+      }
+    } else {
+      // Fallback for popup blockers
+      document.body.appendChild(a);
+      a.click();
+    }
+    
+    // Clean up
+    setTimeout(() => {
+      if (document.body.contains(a)) {
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }, 2000);
   } catch (error) {
     console.error("Failed to generate memo Word document:", error);
     alert("Failed to export Word document. Please contact system administrator.");
@@ -442,15 +475,40 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
     // Trigger browser download
     const safeTitle = (data.positionTitle || "Position").replace(/[^a-zA-Z0-9_-]/g, "_");
     const safeName = (data.soldierNameCaps || "Applicant").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const filename = `Application_Memo_${safeTitle}_${safeName}.docx`;
     const url = URL.createObjectURL(blob);
+    
+    const newTab = window.open("", "_blank");
+    
     const a = document.createElement("a");
     a.href = url;
+    a.download = filename;
     a.target = "_blank";
-    a.download = `Application_Memo_${safeTitle}_${safeName}.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.rel = "noopener noreferrer";
+
+    if (newTab) {
+      try {
+        newTab.document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          if (!newTab.closed) newTab.close();
+        }, 3000);
+      } catch (e) {
+        document.body.appendChild(a);
+        a.click();
+      }
+    } else {
+      document.body.appendChild(a);
+      a.click();
+    }
+    
+    // Cleanup with delay
+    setTimeout(() => {
+      if (document.body.contains(a)) {
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }, 2000);
   } catch (err) {
     console.error("Failed to generate application memo:", err);
     alert("Error generating document: " + (err instanceof Error ? err.message : String(err)));
