@@ -7,6 +7,7 @@ import autoTable from "jspdf-autotable";
 import DutyInspectorModal from "./DutyInspectorModal";
 import RequestUpdateModal from "./RequestUpdateModal";
 import VacancyAnnouncementModal from "./VacancyAnnouncementModal";
+import ExportPDFModal from "./ExportPDFModal";
 import { motion, AnimatePresence } from "motion/react";
 
 interface DutiesListProps {
@@ -55,6 +56,7 @@ export default function DutiesList({
   const [showSubmitSuccessToast, setShowSubmitSuccessToast] = useState(false);
   const [selectedDutyForVacancy, setSelectedDutyForVacancy] = useState<Duty | null>(null);
   const [dutyPendingConfirmation, setDutyPendingConfirmation] = useState<Duty | null>(null);
+  const [isExportPDFModalOpen, setIsExportPDFModalOpen] = useState(false);
 
   useEffect(() => {
     if (showSubmitSuccessToast) {
@@ -376,7 +378,24 @@ export default function DutiesList({
     setSelectedDutyForVacancy(scratchDuty);
   };
 
+  const activeFiltersSummaryList = useMemo(() => {
+    const active: string[] = [];
+    if (categoryFilter !== "All") active.push(`Shop: ${categoryFilter}`);
+    if (elementFilter !== "All") active.push(`Element: ${elementFilter}`);
+    if (tierFilter !== "All") active.push(`Tier: ${tierFilter}`);
+    if (scopeFilter !== "All") active.push(`Scope: ${scopeFilter}`);
+    if (expirationFilter !== "All") active.push(`Status: ${expirationFilter}`);
+    if (commandFilter !== "All") active.push(`Cmd Appt: ${commandFilter}`);
+    if (personnelFilter !== "All") active.push(`Personnel: ${personnelFilter}`);
+    if (searchQuery) active.push(`Search: "${searchQuery}"`);
+    return active;
+  }, [categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, personnelFilter, searchQuery]);
+
   const handleExportPDF = () => {
+    setIsExportPDFModalOpen(true);
+  };
+
+  const executeExportPDF = ({ includeScope }: { includeScope: boolean }) => {
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
@@ -384,35 +403,33 @@ export default function DutiesList({
     });
     
     // Add professional header
-    doc.setFontSize(22);
+    doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text('Broadening Positions Roster', 14, 20);
+    doc.text('Broadening Positions Roster', 8, 15);
     
-    doc.setFontSize(10);
+    doc.setFontSize(8);
     doc.setTextColor(100);
     const dateStr = new Date().toLocaleString();
-    doc.text(`Export Date: ${dateStr}`, 14, 28);
+    doc.text(`Export Date: ${dateStr}`, 8, 21);
     
     // Display active filters
-    const activeFilters = [];
-    if (categoryFilter !== "All") activeFilters.push(`Shop: ${categoryFilter}`);
-    if (elementFilter !== "All") activeFilters.push(`Element: ${elementFilter}`);
-    if (tierFilter !== "All") activeFilters.push(`Tier: ${tierFilter}`);
-    if (scopeFilter !== "All") activeFilters.push(`Scope: ${scopeFilter}`);
-    if (searchQuery) activeFilters.push(`Search: "${searchQuery}"`);
-    
-    if (activeFilters.length > 0) {
-      doc.text(`Applied Filters: ${activeFilters.join(' | ')}`, 14, 33);
+    if (activeFiltersSummaryList.length > 0) {
+      doc.text(`Applied Filters: ${activeFiltersSummaryList.join(' | ')}`, 8, 26);
     } else {
-      doc.text('Filters: All (Full Roster)', 14, 33);
+      doc.text('Applied Filters: All Positions (Full Roster)', 8, 26);
     }
     
-    const tableData = filteredDuties.map(duty => {
+    const headers = ['SHOP', 'JOB TITLE', 'RANK', 'NAME', 'ELEM', 'POS\nTIER', 'SCOPE', 'TIER\nAGG', 'TERM STATUS', 'CMD\nAPPT'];
+
+    const numCols = headers.length;
+    const tableData: any[] = [];
+
+    filteredDuties.forEach(duty => {
       const summary = soldierSummaryMap.get((duty.lastName || "").toLowerCase());
       const tierAgg = summary ? summary.tierAggregate : 0;
       const termStatus = getTermExpirationStatus(duty.termEndDate, duty.lastName);
       
-      return [
+      const primaryRow: any[] = [
         duty.category || '',
         duty.jobTitle || '',
         duty.rank || '',
@@ -424,41 +441,78 @@ export default function DutiesList({
         `${termStatus.toUpperCase()}${duty.termEndDate ? ` (${duty.termEndDate})` : ''}`,
         duty.isCommandAppointed ? 'YES' : 'NO'
       ];
+
+      tableData.push(primaryRow);
+
+      // Append Senior Rater Abbreviation at top of Scope of Responsibility underneath the row
+      if (includeScope) {
+        const scopeContent = duty.scopeOfResponsibilities?.trim();
+        const srContent = duty.seniorRaterAbbreviation?.trim();
+
+        if (scopeContent || srContent) {
+          const parts: string[] = [];
+          if (srContent) {
+            parts.push(`Senior Rater Abbreviation: ${srContent}`);
+          }
+          if (scopeContent) {
+            parts.push(`Scope of Responsibility: ${scopeContent}`);
+          }
+
+          if (parts.length > 0) {
+            tableData.push([
+              {
+                content: parts.join('\n'),
+                colSpan: numCols,
+                styles: {
+                  fontSize: 6.2,
+                  textColor: [51, 65, 85], // Slate-700
+                  fontStyle: 'normal',
+                  fillColor: [248, 250, 252], // Slate-50
+                  cellPadding: { top: 1.2, bottom: 1.5, left: 4, right: 4 }
+                }
+              }
+            ]);
+          }
+        }
+      }
     });
 
+    const columnStyles: any = {
+      0: { cellWidth: 38 }, // Shop
+      1: { cellWidth: 65 }, // Job Title
+      2: { halign: 'center', cellWidth: 16 }, // Rank
+      3: { fontStyle: 'bold', cellWidth: 36 }, // Name
+      4: { halign: 'center', cellWidth: 16 }, // Elem
+      5: { halign: 'center', cellWidth: 16 }, // Pos Tier
+      6: { halign: 'center', cellWidth: 16 }, // Scope
+      7: { halign: 'center', cellWidth: 17, fontStyle: 'bold' }, // Tier Agg
+      8: { halign: 'center', cellWidth: 44 }, // Term Status
+      9: { halign: 'center', cellWidth: 17 } // Cmd Appt
+    };
+
     autoTable(doc, {
-      startY: 40,
-      head: [['SHOP', 'JOB TITLE', 'RANK', 'LAST NAME', 'ELEM', 'POS TIER', 'SCOPE', 'TIER AGG', 'TERM STATUS', 'CMD APPT']],
+      startY: 31,
+      head: [headers],
       body: tableData,
       theme: 'grid',
       headStyles: { 
         fillColor: [15, 23, 42], // Slate-900
         textColor: [255, 255, 255],
-        fontSize: 8,
+        fontSize: 7.5,
         fontStyle: 'bold',
-        halign: 'center'
+        halign: 'center',
+        valign: 'middle'
       },
       styles: { 
-        fontSize: 7, 
+        fontSize: 6.8, 
         cellPadding: 2,
         valign: 'middle'
       },
-      columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 50 },
-        2: { halign: 'center', cellWidth: 15 },
-        3: { fontStyle: 'bold' },
-        4: { halign: 'center', cellWidth: 15 },
-        5: { halign: 'center', cellWidth: 15 },
-        6: { halign: 'center', cellWidth: 15 },
-        7: { halign: 'center', cellWidth: 15, fontStyle: 'bold' },
-        8: { halign: 'center', cellWidth: 35 },
-        9: { halign: 'center', cellWidth: 15 }
-      },
+      columnStyles: columnStyles,
       alternateRowStyles: {
-        fillColor: [248, 250, 252] // Slate-50
+        fillColor: [255, 255, 255]
       },
-      margin: { top: 40 }
+      margin: { top: 31, left: 8, right: 8, bottom: 12 }
     });
 
     // Add footer with page numbers
@@ -470,7 +524,7 @@ export default function DutiesList({
       doc.text(
         `Page ${i} of ${pageCount}`,
         doc.internal.pageSize.getWidth() / 2,
-        doc.internal.pageSize.getHeight() - 10,
+        doc.internal.pageSize.getHeight() - 8,
         { align: 'center' }
       );
     }
@@ -1156,6 +1210,16 @@ export default function DutiesList({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Export Filtered PDF Options Modal */}
+      <ExportPDFModal
+        isOpen={isExportPDFModalOpen}
+        onClose={() => setIsExportPDFModalOpen(false)}
+        onExport={executeExportPDF}
+        filteredCount={filteredDuties.length}
+        totalCount={duties.length}
+        activeFilters={activeFiltersSummaryList}
+      />
     </div>
   );
 }

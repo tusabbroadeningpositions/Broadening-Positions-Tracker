@@ -20,7 +20,9 @@ import {
   Filter, 
   ArrowUpDown, 
   CheckCircle,
-  Trash2
+  Trash2,
+  StickyNote,
+  MessageSquareText
 } from "lucide-react";
 
 interface VacanciesViewProps {
@@ -35,8 +37,11 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
   const [shopFilter, setShopFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "name-asc" | "name-desc" | "deadline-asc">("date-desc");
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingNotes, setEditingNotes] = useState<string>("");
+  // Admin Notes Modal state
+  const [activeNotesVacancy, setActiveNotesVacancy] = useState<any | null>(null);
+  const [modalNotesText, setModalNotesText] = useState<string>("");
+  const [isEditingModalNotes, setIsEditingModalNotes] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   // Custom in-app confirmation modal state (bypasses blocked window.confirm in iframe)
@@ -126,28 +131,38 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
     return result;
   }, [currentList, searchQuery, localSearch, shopFilter, sortBy]);
 
-  const handleEditNotes = (id: string, currentNotes: string) => {
-    setEditingId(id);
-    setEditingNotes(currentNotes || "");
+  const handleOpenNotesModal = (vacancy: any, startEditing = false) => {
+    setActiveNotesVacancy(vacancy);
+    setModalNotesText(vacancy.adminNotes || "");
+    setIsEditingModalNotes(startEditing || !vacancy.adminNotes);
   };
 
-  const handleSaveNotes = async (id: string) => {
-    setSavingId(id);
+  const handleCloseNotesModal = () => {
+    setActiveNotesVacancy(null);
+    setModalNotesText("");
+    setIsEditingModalNotes(false);
+  };
+
+  const handleSaveModalNotes = async () => {
+    if (!activeNotesVacancy) return;
+    setSavingNotes(true);
     try {
-      await updateVacancyDraftAdminNotes(id, editingNotes);
-      setEditingId(null);
+      await updateVacancyDraftAdminNotes(activeNotesVacancy.id, modalNotesText);
+      setActiveNotesVacancy({
+        ...activeNotesVacancy,
+        adminNotes: modalNotesText
+      });
+      setIsEditingModalNotes(false);
       setToastMessage({ type: "success", text: "Admin notes saved successfully." });
     } catch (err) {
       console.error("Failed to save admin notes", err);
-      setToastMessage({ type: "error", text: "Error saving notes: " + (err instanceof Error ? err.message : String(err)) });
+      setToastMessage({ 
+        type: "error", 
+        text: "Error saving notes: " + (err instanceof Error ? err.message : String(err)) 
+      });
     } finally {
-      setSavingId(null);
+      setSavingNotes(false);
     }
-  };
-
-  const handleCancelNotes = () => {
-    setEditingId(null);
-    setEditingNotes("");
   };
 
   const openMarkAsFilledModal = (vacancy: any) => {
@@ -346,19 +361,21 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
             <table className="w-full text-left border-collapse" id="vacancies_table">
               <thead>
                 <tr className="bg-slate-950 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-850">
-                  <th className="px-5 py-3.5">Position Title</th>
-                  <th className="px-5 py-3.5">Submission Deadline</th>
-                  <th className="px-5 py-3.5">Rank Requirement</th>
-                  <th className="px-5 py-3.5 text-center">Tier</th>
-                  <th className="px-5 py-3.5">POC</th>
-                  <th className="px-5 py-3.5">Announcement & Apply</th>
-                  <th className="px-5 py-3.5">Admin Notes</th>
+                  <th className="px-4 py-3.5">Position Title</th>
+                  <th className="px-4 py-3.5">Submission Deadline</th>
+                  <th className="px-4 py-3.5">Rank Requirement</th>
+                  <th className="px-3 py-3.5 text-center">Tier</th>
+                  <th className="px-4 py-3.5">POC</th>
+                  <th className="px-3 py-3.5 text-center">Announcement</th>
+                  <th className="px-3 py-3.5 text-center">Apply</th>
+                  <th className="px-3 py-3.5 text-center">Admin Notes</th>
+                  {isAdmin && <th className="px-4 py-3.5 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850 text-xs">
                 {processedVacancies.map((vacancy) => {
                   const rankReq = vacancy.eligibilityRequirements?.[0] || "N/A";
-                  const isEditing = editingId === vacancy.id;
+                  const hasNotes = !!(vacancy.adminNotes && vacancy.adminNotes.trim());
 
                   return (
                     <tr
@@ -366,7 +383,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       className="hover:bg-slate-950/40 transition-colors duration-150"
                     >
                       {/* Position Title & Category */}
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-200 text-sm">{vacancy.positionTitle}</span>
                           {viewMode === "archived" && (
@@ -379,7 +396,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       </td>
 
                       {/* Submission Deadline */}
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-amber-400 font-mono">
                           <Calendar className="w-3.5 h-3.5 shrink-0 text-slate-500" />
                           <span>{shortenDate(vacancy.closeDeadlineDate)}</span>
@@ -387,7 +404,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       </td>
 
                       {/* Rank Requirement */}
-                      <td className="px-5 py-4 max-w-[180px]">
+                      <td className="px-4 py-4 max-w-[180px]">
                         <div className="flex items-center gap-1.5 text-slate-300">
                           <Award className="w-3.5 h-3.5 shrink-0 text-slate-500" />
                           <span className="truncate block" title={rankReq}>{rankReq}</span>
@@ -395,14 +412,14 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       </td>
 
                       {/* Tier level */}
-                      <td className="px-5 py-4 text-center whitespace-nowrap">
+                      <td className="px-3 py-4 text-center whitespace-nowrap">
                         <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-sm font-bold font-mono text-[10px]">
                           Tier {vacancy.tierLevel || "N/A"}
                         </span>
                       </td>
 
                       {/* POC */}
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="text-slate-300 font-semibold flex items-center gap-1">
                           <User className="w-3 h-3 text-slate-500 shrink-0" />
                           <span>{vacancy.pocRankName || "N/A"}</span>
@@ -418,127 +435,236 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                         )}
                       </td>
 
-                      {/* Vacancy Announcement Downloads & Apply */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <button
-                            onClick={() => {
-                              downloadVacancyMemo(vacancy);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
-                            title="Download Word Vacancy Announcement"
-                          >
-                            <Download className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                            <span>Word</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedApplyVacancy(vacancy);
-                              setIsApplyModalOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 hover:border-sky-500/40 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-                            title="Apply for this vacancy and generate Application Memo (.docx)"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                            <span>Apply</span>
-                          </button>
-                        </div>
+                      {/* 1. Announcement Column */}
+                      <td className="px-3 py-4 text-center whitespace-nowrap">
+                        <button
+                          id={`download_vacancy_${vacancy.id}`}
+                          onClick={() => {
+                            downloadVacancyMemo(vacancy);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                          title="Download Word Vacancy Announcement (.docx)"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Word</span>
+                        </button>
                       </td>
 
-                      {/* Admin Notes & Actions */}
-                      <td className="px-5 py-4 min-w-[220px]">
-                        {isEditing ? (
-                          <div className="flex flex-col gap-2 w-full">
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                value={editingNotes}
-                                onChange={(e) => setEditingNotes(e.target.value)}
-                                className="bg-slate-950 border border-slate-750 text-slate-200 text-xs rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans"
-                                placeholder="Enter notes..."
-                                autoFocus
-                                disabled={savingId === vacancy.id}
-                              />
-                              <button
-                                onClick={() => handleSaveNotes(vacancy.id)}
-                                disabled={savingId === vacancy.id}
-                                className="p-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 border border-emerald-500/30 rounded shrink-0 transition"
-                                title="Save Notes"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={handleCancelNotes}
-                                disabled={savingId === vacancy.id}
-                                className="p-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded shrink-0 transition"
-                                title="Cancel"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between gap-2 group max-w-[250px]">
-                              <span className="text-slate-400 break-words font-sans italic text-[11px] block pr-1">
-                                {vacancy.adminNotes || "—"}
-                              </span>
-                              {isAdmin && (
-                                <button
-                                  onClick={() => handleEditNotes(vacancy.id, vacancy.adminNotes)}
-                                  className="p-1 text-slate-500 hover:text-emerald-400 rounded hover:bg-slate-800 opacity-0 group-hover:opacity-100 focus:opacity-100 transition duration-150 shrink-0 cursor-pointer"
-                                  title="Edit Admin Notes"
-                                >
-                                  <Edit3 className="w-2.5 h-2.5" />
-                                </button>
-                              )}
-                            </div>
+                      {/* 2. Apply Column */}
+                      <td className="px-3 py-4 text-center whitespace-nowrap">
+                        <button
+                          id={`apply_vacancy_${vacancy.id}`}
+                          onClick={() => {
+                            setSelectedApplyVacancy(vacancy);
+                            setIsApplyModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 hover:border-sky-500/40 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                          title="Apply for this vacancy and generate Application Memo (.docx)"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                          <span>Apply</span>
+                        </button>
+                      </td>
 
-                            {/* Admin-only State Change Actions */}
-                            {isAdmin && (
-                              <div className="pt-1 border-t border-slate-800/50">
-                                {viewMode === "active" ? (
-                                  <button
-                                    onClick={() => openMarkAsFilledModal(vacancy)}
-                                    disabled={savingId === vacancy.id}
-                                    className={`inline-flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                                    title="Mark this announcement as Filled / Archived"
-                                  >
-                                    <Archive className="w-3 h-3 text-amber-500 shrink-0" />
-                                    <span>{savingId === vacancy.id ? "Archiving..." : "Mark Filled"}</span>
-                                  </button>
-                                ) : (
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => openRestoreToActiveModal(vacancy)}
-                                      disabled={savingId === vacancy.id}
-                                      className={`inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:border-blue-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                                      title="Restore archived vacancy to Active Announcements"
-                                    >
-                                      <RotateCcw className="w-3 h-3 text-blue-500 shrink-0" />
-                                      <span>{savingId === vacancy.id ? "Reactivating..." : "Reactivate"}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => openDeleteArchiveModal(vacancy)}
-                                      disabled={savingId === vacancy.id}
-                                      className={`inline-flex items-center gap-1 px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                                      title="Permanently delete this archived vacancy announcement"
-                                    >
-                                      <Trash2 className="w-3 h-3 text-rose-500 shrink-0" />
-                                      <span>Delete</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                      {/* 3. Admin Notes (Narrow Column with Clickable Note Icon) */}
+                      <td className="px-3 py-4 text-center whitespace-nowrap">
+                        {hasNotes ? (
+                          <button
+                            id={`view_notes_${vacancy.id}`}
+                            onClick={() => handleOpenNotesModal(vacancy, false)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:border-amber-500/50 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                            title="Click to view Admin Notes"
+                          >
+                            <StickyNote className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Notes</span>
+                          </button>
+                        ) : isAdmin ? (
+                          <button
+                            id={`add_notes_${vacancy.id}`}
+                            onClick={() => handleOpenNotesModal(vacancy, true)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded text-[10px] font-medium transition cursor-pointer"
+                            title="Add Admin Notes"
+                          >
+                            <Edit3 className="w-3 h-3 text-slate-500" />
+                            <span>+ Note</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-600 text-xs font-mono select-none">—</span>
                         )}
                       </td>
+
+                      {/* Admin-only State Change Actions Column */}
+                      {isAdmin && (
+                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                          {viewMode === "active" ? (
+                            <button
+                              onClick={() => openMarkAsFilledModal(vacancy)}
+                              disabled={savingId === vacancy.id}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:border-amber-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                              }`}
+                              title="Mark this announcement as Filled / Archived"
+                            >
+                              <Archive className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <span>{savingId === vacancy.id ? "Archiving..." : "Mark Filled"}</span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => openRestoreToActiveModal(vacancy)}
+                                disabled={savingId === vacancy.id}
+                                className={`inline-flex items-center gap-1 px-2 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:border-blue-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                  savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                }`}
+                                title="Restore archived vacancy to Active Announcements"
+                              >
+                                <RotateCcw className="w-3 h-3 text-blue-500 shrink-0" />
+                                <span>{savingId === vacancy.id ? "Reactivating..." : "Reactivate"}</span>
+                              </button>
+                              <button
+                                onClick={() => openDeleteArchiveModal(vacancy)}
+                                disabled={savingId === vacancy.id}
+                                className={`inline-flex items-center gap-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 hover:border-rose-500/40 rounded text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                  savingId === vacancy.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                }`}
+                                title="Permanently delete this archived vacancy announcement"
+                              >
+                                <Trash2 className="w-3 h-3 text-rose-500 shrink-0" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Notes Viewer / Editor Modal */}
+      {activeNotesVacancy && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          id="admin_notes_modal"
+        >
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400">
+                  <StickyNote className="w-5 h-5 shrink-0" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    Admin Notes
+                  </h3>
+                  <p className="text-[11px] text-emerald-400 font-medium">
+                    {activeNotesVacancy.positionTitle}
+                    <span className="text-slate-500 text-[10px] font-mono ml-2">({activeNotesVacancy.shopName})</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseNotesModal}
+                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body: Read or Edit Mode */}
+            {isEditingModalNotes ? (
+              <div className="space-y-3">
+                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                  Edit Note Content:
+                </label>
+                <textarea
+                  value={modalNotesText}
+                  onChange={(e) => setModalNotesText(e.target.value)}
+                  rows={6}
+                  placeholder="Enter administrator notes, routing status, or special internal instructions..."
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans resize-y leading-relaxed"
+                  autoFocus
+                />
+                <div className="flex items-center justify-between pt-2">
+                  {activeNotesVacancy.adminNotes && (
+                    <button
+                      type="button"
+                      onClick={() => setModalNotesText("")}
+                      className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+                    >
+                      Clear notes
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingModalNotes(false);
+                        setModalNotesText(activeNotesVacancy.adminNotes || "");
+                      }}
+                      disabled={savingNotes}
+                      className="px-3.5 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveModalNotes}
+                      disabled={savingNotes}
+                      className="px-4 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    >
+                      {savingNotes ? (
+                        <span>Saving...</span>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Save Notes</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activeNotesVacancy.adminNotes && activeNotesVacancy.adminNotes.trim() ? (
+                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                    {activeNotesVacancy.adminNotes}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-slate-950/50 border border-dashed border-slate-800 rounded-lg">
+                    <MessageSquareText className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                    <p className="text-xs text-slate-400 font-medium">No admin notes have been added for this announcement.</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                  {isAdmin ? (
+                    <button
+                      onClick={() => setIsEditingModalNotes(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>{activeNotesVacancy.adminNotes ? "Edit Notes" : "Add Notes"}</span>
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+                  <button
+                    onClick={handleCloseNotesModal}
+                    className="px-4 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
