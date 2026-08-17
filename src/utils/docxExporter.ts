@@ -466,14 +466,26 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
         return para;
       });
     } else {
-      xml = replaceParagraphContent(xml, "QUALIFICATION #3", "");
+      // Omit QUALIFICATION #3 and its following blank spacer paragraph to avoid extra space
+      const qual3AndFollowingSpacerRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?QUALIFICATION #3[\s\S]*?<\/w:p>\s*<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
+      if (qual3AndFollowingSpacerRegex.test(xml)) {
+        xml = xml.replace(qual3AndFollowingSpacerRegex, "");
+      } else {
+        xml = replaceParagraphContent(xml, "QUALIFICATION #3", "");
+      }
     }
 
     // 6. Other roles
     if (otherRoles) {
       xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", otherRoles);
     } else {
-      xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", "N/A");
+      // Omit the other roles paragraph AND the following blank spacer paragraph to avoid double spacing
+      const otherRolesAndFollowingSpacerRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?\[IF APPLICABLE, SPEAK ABOUT OTHER ROLES[\s\S]*?<\/w:p>\s*<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
+      if (otherRolesAndFollowingSpacerRegex.test(xml)) {
+        xml = xml.replace(otherRolesAndFollowingSpacerRegex, "");
+      } else {
+        xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", "");
+      }
     }
 
     // 7. Reason for interest
@@ -508,6 +520,8 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
     if (elTitle && elTitle !== "Element Leader") {
       xml = replaceParagraphContent(xml, "Element Leader", elTitle);
     }
+
+
 
     // Re-assemble document XML
     zip.file("word/document.xml", xml);

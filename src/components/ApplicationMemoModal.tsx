@@ -241,7 +241,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
             </div>
           )}
 
-          {/* Target Position & Shop NCOIC Section */}
+          {/* Target Position & Shop Manager Section */}
           <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
               <Award className="w-4 h-4" /> Position & Authority Header
@@ -265,7 +265,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
 
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Shop NCOIC Rank & Name <span className="text-emerald-400">*</span>
+                  Shop Manager Rank & Name <span className="text-emerald-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -419,7 +419,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Other Pertinent Information <span className="text-slate-500">(Optional - if empty, paragraph will be omitted from memo)</span>
+                Other Pertinent Information <span className="text-slate-500">(Optional)</span>
               </label>
               <textarea
                 rows={2}
