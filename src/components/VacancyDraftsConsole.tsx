@@ -72,7 +72,7 @@ The Broadening Positions Management Team`;
     const emailBody = formatEmailTemplate(bodyTemplate, replacements);
 
     const pocEmail = draft.pocEmail || "";
-    const mailtoUrl = `mailto:${pocEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    const mailtoUrl = `mailto:${pocEmail}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
     setProcessingId(draft.id);
     setErrorMessage(null);
@@ -130,7 +130,7 @@ Broadening Positions Team`;
     const emailSubject = formatEmailTemplate(subjectTemplate, replacements);
     const emailBody = formatEmailTemplate(bodyTemplate, replacements);
 
-    const mailtoUrl = `mailto:${draft.pocEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    const mailtoUrl = `mailto:${draft.pocEmail}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     
     setProcessingId(draft.id);
     setErrorMessage(null);

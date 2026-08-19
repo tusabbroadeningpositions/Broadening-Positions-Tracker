@@ -75,7 +75,7 @@ The BP Team`;
     const subject = formatEmailTemplate(subjectTemplate, replacements);
     const body = formatEmailTemplate(bodyTemplate, replacements);
 
-    const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
   };
 
@@ -104,7 +104,7 @@ The BP Team`;
     const subject = formatEmailTemplate(subjectTemplate, replacements);
     const body = formatEmailTemplate(bodyTemplate, replacements);
 
-    const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
   };
 
