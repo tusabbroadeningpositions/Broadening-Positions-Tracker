@@ -54,7 +54,13 @@
         "justification": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "currentJobTitle": { "type": "string" },
+        "requestedJobTitle": { "type": "string" },
+        "currentTierLevel": { "type": "number" },
+        "requestedTierLevel": { "type": "number" },
+        "currentIsCommandAppointed": { "type": "boolean" },
+        "requestedIsCommandAppointed": { "type": "boolean" }
       },
       "required": ["dutyId", "category", "jobTitle", "requestedLastName", "requestedRank", "requestedDateStarted", "requestor", "requestedScopeOfResponsibilities", "isNewHire", "isCsmApproved", "status", "createdAt"]
     },
@@ -95,9 +101,24 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "subject", "body"]
+    },
+    "ShopRelationship": {
+      "title": "ShopRelationship",
+      "description": "Defines parent-child relationships between shops (categories).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "parentShop": { "type": "string" },
+        "subShops": { "type": "array" }
+      },
+      "required": ["id", "parentShop", "subShops"]
     }
   },
   "firestore": {
+    "/shop_relationships/{relationshipId}": {
+      "schema": "ShopRelationship",
+      "description": "Collection of parent-to-sub-shop relationships."
+    },
     "/email_templates/{templateId}": {
       "schema": "EmailTemplate",
       "description": "Collection of default email templates for status changes."

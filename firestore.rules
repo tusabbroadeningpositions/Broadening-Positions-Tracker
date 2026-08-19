@@ -66,6 +66,8 @@ service cloud.firestore {
         && data.createdAt is string
         && (!('justification' in data) || data.justification is string)
         && (!('updatedAt' in data) || data.updatedAt is string)
+        && (!('currentIsCommandAppointed' in data) || data.currentIsCommandAppointed is bool)
+        && (!('requestedIsCommandAppointed' in data) || data.requestedIsCommandAppointed is bool)
         && (!('admin_secret' in data) || data.admin_secret is string);
     }
 
@@ -75,6 +77,14 @@ service cloud.firestore {
         && data.subject is string && data.subject.size() <= 500
         && data.body is string && data.body.size() <= 10000
         && (!('updatedAt' in data) || data.updatedAt is string)
+        && (!('admin_secret' in data) || data.admin_secret is string);
+    }
+
+    function isValidShopRelationship(data) {
+      return data.keys().hasAll(['id', 'parentShop', 'subShops'])
+        && data.id is string && data.id.size() <= 150
+        && data.parentShop is string && data.parentShop.size() <= 150
+        && data.subShops is list
         && (!('admin_secret' in data) || data.admin_secret is string);
     }
 
@@ -96,6 +106,14 @@ service cloud.firestore {
       allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
                            && isValidDuty(request.resource.data);
       allow delete: if true; 
+    }
+
+    // Shop Relationships collection
+    match /shop_relationships/{relationshipId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
+                           && isValidShopRelationship(request.resource.data);
+      allow delete: if true;
     }
 
     // Update Requests collection

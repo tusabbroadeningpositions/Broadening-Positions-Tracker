@@ -1,4 +1,4 @@
-import { Duty, SoldierSummary, UpdateRequest } from "../types";
+import { Duty, SoldierSummary, UpdateRequest, ShopRelationship } from "../types";
 import { parseRawDuties, isCommandAppointedDuty } from "./rawDuties";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
@@ -446,14 +446,26 @@ export async function approveUpdateRequest(req: UpdateRequest): Promise<void> {
     updatedAt
   });
 
-  batch.update(dutyRef, {
+  const dutyUpdates: any = {
     lastName: req.requestedLastName,
     rank: req.requestedRank,
     dateStarted: req.requestedDateStarted,
     scopeOfResponsibilities: req.requestedScopeOfResponsibilities,
     admin_secret: "DUTY_TRACKER_SECRET_2024",
     updatedAt
-  });
+  };
+
+  if (req.requestedJobTitle !== undefined && req.requestedJobTitle !== "") {
+    dutyUpdates.jobTitle = req.requestedJobTitle;
+  }
+  if (req.requestedTierLevel !== undefined) {
+    dutyUpdates.tierLevel = req.requestedTierLevel;
+  }
+  if (req.requestedIsCommandAppointed !== undefined) {
+    dutyUpdates.isCommandAppointed = req.requestedIsCommandAppointed;
+  }
+
+  batch.update(dutyRef, dutyUpdates);
 
   try {
     await batch.commit();
@@ -507,6 +519,57 @@ export async function deleteVacancyDraft(id: string): Promise<void> {
     await deleteDoc(doc(db, "vacancy_drafts", id));
   } catch (fsError) {
     handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Save a ShopRelationship document to Firestore.
+ */
+export async function saveShopRelationship(relationship: ShopRelationship): Promise<void> {
+  const path = `shop_relationships/${relationship.id}`;
+  try {
+    await setDoc(doc(db, "shop_relationships", relationship.id), {
+      ...relationship,
+      admin_secret: "DUTY_TRACKER_SECRET_2024",
+      updatedAt: new Date().toISOString()
+    });
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Delete a ShopRelationship document from Firestore.
+ */
+export async function deleteShopRelationship(parentShop: string): Promise<void> {
+  const path = `shop_relationships/${parentShop}`;
+  try {
+    await deleteDoc(doc(db, "shop_relationships", parentShop));
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.DELETE, path);
+  }
+}
+
+/**
+ * Load all ShopRelationships from Firestore.
+ */
+export async function loadShopRelationships(): Promise<ShopRelationship[]> {
+  const path = "shop_relationships";
+  try {
+    const snapshot = await getDocs(collection(db, "shop_relationships"));
+    const list: ShopRelationship[] = [];
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        id: docSnap.id,
+        parentShop: data.parentShop,
+        subShops: data.subShops || [],
+      });
+    });
+    return list;
+  } catch (fsError) {
+    handleFirestoreError(fsError, OperationType.GET, path);
+    return [];
   }
 }
 

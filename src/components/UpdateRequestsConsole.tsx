@@ -274,6 +274,19 @@ The BP Team`;
                 const dateChanged = req.currentDateStarted !== req.requestedDateStarted;
 
                 const targetDuty = allDuties.find((d) => d.id === req.dutyId);
+
+                const currentJobTitleVal = req.currentJobTitle ?? req.jobTitle;
+                const requestedJobTitleVal = req.requestedJobTitle ?? currentJobTitleVal;
+                const titleChanged = req.requestedJobTitle !== undefined && req.requestedJobTitle !== "" && currentJobTitleVal !== req.requestedJobTitle;
+
+                const currentTierLevelVal = req.currentTierLevel !== undefined ? req.currentTierLevel : (targetDuty?.tierLevel ?? null);
+                const requestedTierLevelVal = req.requestedTierLevel !== undefined ? req.requestedTierLevel : currentTierLevelVal;
+                const tierChanged = req.requestedTierLevel !== undefined && currentTierLevelVal !== req.requestedTierLevel;
+
+                const currentIsCommandAppointedVal = req.currentIsCommandAppointed !== undefined ? req.currentIsCommandAppointed : (targetDuty?.isCommandAppointed ?? false);
+                const requestedIsCommandAppointedVal = req.requestedIsCommandAppointed !== undefined ? req.requestedIsCommandAppointed : currentIsCommandAppointedVal;
+                const cmdApptChanged = req.requestedIsCommandAppointed !== undefined && currentIsCommandAppointedVal !== req.requestedIsCommandAppointed;
+
                 const currentScope = (req.currentScopeOfResponsibilities ?? targetDuty?.scopeOfResponsibilities ?? "").trim();
                 const requestedScope = (req.requestedScopeOfResponsibilities || "").trim();
                 const hasScopeData = currentScope !== "" || requestedScope !== "";
@@ -346,6 +359,42 @@ The BP Team`;
                               <span className="truncate max-w-[120px] line-through text-slate-500">{req.currentDateStarted}</span>
                               <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                               <span className={dateChanged ? "text-emerald-400 font-bold" : ""}>{req.requestedDateStarted}</span>
+                            </div>
+                          </div>
+
+                          {/* Position Title */}
+                          <div className={`p-2 rounded border flex items-center justify-between ${
+                            titleChanged ? "bg-amber-950/20 border-amber-900/40 text-amber-300" : "bg-slate-900/40 border-slate-800/60 text-slate-400"
+                          }`}>
+                            <span className="text-[9px] uppercase font-semibold text-slate-500 shrink-0 w-24">Pos Title</span>
+                            <div className="flex items-center space-x-2 truncate w-full justify-end font-semibold">
+                              <span className="truncate max-w-[120px] line-through text-slate-500">{currentJobTitleVal}</span>
+                              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                              <span className={titleChanged ? "text-emerald-400 font-bold" : ""}>{requestedJobTitleVal}</span>
+                            </div>
+                          </div>
+
+                          {/* Tier Designation */}
+                          <div className={`p-2 rounded border flex items-center justify-between ${
+                            tierChanged ? "bg-amber-950/20 border-amber-900/40 text-amber-300" : "bg-slate-900/40 border-slate-800/60 text-slate-400"
+                          }`}>
+                            <span className="text-[9px] uppercase font-semibold text-slate-500 shrink-0 w-24">Tier</span>
+                            <div className="flex items-center space-x-2 w-full justify-end font-semibold">
+                              <span className="line-through text-slate-500">{currentTierLevelVal === null ? "N/A" : `Tier ${currentTierLevelVal}`}</span>
+                              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                              <span className={tierChanged ? "text-emerald-400 font-bold" : ""}>{requestedTierLevelVal === null ? "N/A" : `Tier ${requestedTierLevelVal}`}</span>
+                            </div>
+                          </div>
+
+                          {/* Commander Appointed */}
+                          <div className={`p-2 rounded border flex items-center justify-between ${
+                            cmdApptChanged ? "bg-amber-950/20 border-amber-900/40 text-amber-300" : "bg-slate-900/40 border-slate-800/60 text-slate-400"
+                          }`}>
+                            <span className="text-[9px] uppercase font-semibold text-slate-500 shrink-0 w-24">Cmd Appt</span>
+                            <div className="flex items-center space-x-2 w-full justify-end font-semibold">
+                              <span className="line-through text-slate-500">{currentIsCommandAppointedVal ? "YES" : "NO"}</span>
+                              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                              <span className={cmdApptChanged ? "text-emerald-400 font-bold" : ""}>{requestedIsCommandAppointedVal ? "YES" : "NO"}</span>
                             </div>
                           </div>
                         </div>

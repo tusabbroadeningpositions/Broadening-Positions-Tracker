@@ -31,6 +31,12 @@ export default function RequestUpdateModal({
   const [isEditingScope, setIsEditingScope] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [requestedJobTitle, setRequestedJobTitle] = useState(duty.jobTitle);
+  const [requestedTierLevel, setRequestedTierLevel] = useState<string>(
+    duty.tierLevel === null ? "N/A" : duty.tierLevel.toString()
+  );
+  const [requestedIsCommandAppointed, setRequestedIsCommandAppointed] = useState(duty.isCommandAppointed || false);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +47,10 @@ export default function RequestUpdateModal({
     }
     if (!requestorEmail.trim()) {
       setError("Your Email Address (.mil) is required.");
+      return;
+    }
+    if (!requestedJobTitle.trim()) {
+      setError("Requested Position Title is required.");
       return;
     }
     if (!requestedLastName.trim()) {
@@ -64,6 +74,12 @@ export default function RequestUpdateModal({
         currentRank: duty.rank,
         currentDateStarted: duty.dateStarted || "N/A",
         currentScopeOfResponsibilities: duty.scopeOfResponsibilities || "",
+        currentJobTitle: duty.jobTitle,
+        requestedJobTitle: requestedJobTitle.trim(),
+        currentTierLevel: duty.tierLevel,
+        requestedTierLevel: requestedTierLevel === "N/A" ? null : parseInt(requestedTierLevel, 10),
+        currentIsCommandAppointed: duty.isCommandAppointed || false,
+        requestedIsCommandAppointed,
         requestedLastName: requestedLastName.trim(),
         requestedRank,
         requestedDateStarted: requestedDateStarted.trim(),
@@ -118,18 +134,29 @@ export default function RequestUpdateModal({
           {/* Current Info Row */}
           <div className="bg-slate-950/40 border border-slate-850 p-3 rounded text-xs space-y-1.5">
             <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Current Roster Info</span>
-            <div className="grid grid-cols-3 gap-2 text-slate-300 font-mono text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-slate-300 font-mono text-[11px]">
+              <div className="sm:col-span-2">
+                <span className="block text-[9px] text-slate-500">POSITION TITLE</span>
+                <span className="font-semibold text-slate-200 truncate block">
+                  {duty.jobTitle}
+                  {duty.isCommandAppointed && (
+                    <span className="text-[8px] bg-amber-500/20 text-amber-400 px-1 py-0.5 rounded font-sans ml-1.5 font-bold uppercase shrink-0 align-middle">CMD APPT</span>
+                  )}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[9px] text-slate-500">TIER</span>
+                <span className="font-semibold text-slate-200">{duty.tierLevel === null ? "N/A" : `Tier ${duty.tierLevel}`}</span>
+              </div>
               <div>
                 <span className="block text-[9px] text-slate-500">SOLDIER</span>
-                <span className="font-semibold text-slate-200">{duty.lastName}</span>
+                <span className="font-semibold text-slate-200 block truncate">{duty.lastName}</span>
               </div>
               <div>
-                <span className="block text-[9px] text-slate-500">RANK</span>
-                <span className="font-semibold text-slate-200">{duty.rank || "N/A"}</span>
-              </div>
-              <div>
-                <span className="block text-[9px] text-slate-500">DATE STARTED</span>
-                <span className="font-semibold text-slate-200">{duty.dateStarted || "N/A"}</span>
+                <span className="block text-[9px] text-slate-500">RANK / START</span>
+                <span className="font-semibold text-slate-200">
+                  {duty.rank || "N/A"} ({duty.dateStarted || "N/A"})
+                </span>
               </div>
             </div>
           </div>
@@ -219,6 +246,39 @@ export default function RequestUpdateModal({
               )}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Requested Position Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Shop Manager"
+                  className="w-full px-3 py-2 border border-slate-800 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-950 text-slate-200 text-xs font-semibold"
+                  value={requestedJobTitle}
+                  onChange={(e) => setRequestedJobTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Requested Tier Level of Duty
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-800 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-slate-950 text-slate-200 text-xs font-semibold cursor-pointer"
+                  value={requestedTierLevel}
+                  onChange={(e) => setRequestedTierLevel(e.target.value)}
+                >
+                  <option value="N/A">N/A / None</option>
+                  <option value="1">Tier 1</option>
+                  <option value="2">Tier 2</option>
+                  <option value="3">Tier 3</option>
+                  <option value="4">Tier 4</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Requested Soldier's Name (Last Name) *
@@ -268,6 +328,22 @@ export default function RequestUpdateModal({
 
             {/* Switch Toggles */}
             <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between p-2.5 bg-slate-950/40 rounded border border-slate-850">
+                <div className="flex flex-col pr-4">
+                  <span className="text-[11px] font-bold text-slate-300">Is this a Commander-Appointed position?</span>
+                  <span className="text-[9px] text-slate-500">Check this if the position requires appointment by the commander.</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={requestedIsCommandAppointed}
+                    onChange={(e) => setRequestedIsCommandAppointed(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
               <div className="flex items-center justify-between p-2.5 bg-slate-950/40 rounded border border-slate-850">
                 <div className="flex flex-col pr-4">
                   <span className="text-[11px] font-bold text-slate-300">Is this a new hire?</span>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Duty, SoldierSummary } from "../types";
+import { Duty, SoldierSummary, ShopRelationship } from "../types";
 import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
-import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check, Megaphone, X } from "lucide-react";
+import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check, Megaphone, X, ArrowRight } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import DutyInspectorModal from "./DutyInspectorModal";
@@ -21,6 +21,7 @@ interface DutiesListProps {
   searchQuery: string;
   onClearSearch?: () => void;
   myShopTrigger?: number;
+  shopRelationships?: ShopRelationship[];
 }
 
 export default function DutiesList({
@@ -34,6 +35,7 @@ export default function DutiesList({
   searchQuery,
   onClearSearch,
   myShopTrigger,
+  shopRelationships = [],
 }: DutiesListProps) {
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -224,8 +226,11 @@ export default function DutiesList({
       // 2. Category Filter
       let matchesCategory = true;
       if (categoryFilter !== "All") {
-        // Use direct equality for the filter dropdown selection
-        matchesCategory = duty.category === categoryFilter;
+        const relation = (shopRelationships || []).find(r => r.parentShop === categoryFilter);
+        const allowedCategories = relation 
+          ? [categoryFilter, ...relation.subShops] 
+          : [categoryFilter];
+        matchesCategory = allowedCategories.includes(duty.category);
       }
 
       // 3. Element Filter
@@ -286,15 +291,26 @@ export default function DutiesList({
     });
 
     // Sorting Logic: 
-    // 1. Category (Shop) Alphabetical
-    // 2. Tier Level Descending (Highest Tier first)
-    // 3. Last Name Alphabetical
+    const isFilteredParent = categoryFilter !== "All" && (shopRelationships || []).some(r => r.parentShop === categoryFilter);
+    const parentRelation = isFilteredParent ? (shopRelationships || []).find(r => r.parentShop === categoryFilter) : null;
+
     return [...result].sort((a, b) => {
-      // Primary: Category
-      const catA = a.category || "";
-      const catB = b.category || "";
-      if (catA < catB) return -1;
-      if (catA > catB) return 1;
+      if (isFilteredParent && parentRelation) {
+        const getGroupScore = (duty: Duty) => {
+          if (duty.category === categoryFilter) return 0;
+          const idx = parentRelation.subShops.indexOf(duty.category);
+          return idx >= 0 ? idx + 1 : 999;
+        };
+        const scoreA = getGroupScore(a);
+        const scoreB = getGroupScore(b);
+        if (scoreA !== scoreB) return scoreA - scoreB;
+      } else {
+        // Primary: Category
+        const catA = a.category || "";
+        const catB = b.category || "";
+        if (catA < catB) return -1;
+        if (catA > catB) return 1;
+      }
 
       // Secondary: Tier Level (Descending: 3, 2, 1, null)
       const tierA = a.tierLevel ?? -1;
@@ -308,7 +324,7 @@ export default function DutiesList({
       const nameB = b.lastName || "";
       return nameA.localeCompare(nameB);
     });
-  }, [duties, searchQuery, categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, personnelFilter]);
+  }, [duties, searchQuery, categoryFilter, elementFilter, tierFilter, scopeFilter, expirationFilter, commandFilter, personnelFilter, shopRelationships]);
 
   // Reset visible count on any filter or query change
   useEffect(() => {
@@ -808,25 +824,51 @@ export default function DutiesList({
             <tbody className="bg-slate-900 divide-y divide-slate-800/80">
               {visibleDuties.length > 0 ? (
                 <>
-                  {visibleDuties.map((duty) => {
+                  {visibleDuties.map((duty, index) => {
                     const isVacant = (duty.lastName || "").toUpperCase() === "VACANT";
                     const dutyCat = (duty.category || "").trim().toLowerCase();
                     const authPrefix = (allowedCategory || "").trim().toLowerCase();
                     const canEdit = isAdmin 
                       || (isHR && !!duty.isCommandAppointed)
                       || (!!allowedCategory && dutyCat.startsWith(authPrefix));
+
+                    // Group transition banner logic for sub-shops
+                    const isFilteredParent = categoryFilter !== "All" && (shopRelationships || []).some(r => r.parentShop === categoryFilter);
+                    const parentRelation = isFilteredParent ? (shopRelationships || []).find(r => r.parentShop === categoryFilter) : null;
+                    const prevDuty = index > 0 ? visibleDuties[index - 1] : null;
+                    const isGroupTransition = !prevDuty || prevDuty.category !== duty.category;
+                    const showGroupBanner = isFilteredParent && parentRelation && isGroupTransition;
+                    const isParentGroup = duty.category === categoryFilter;
+
                     return (
-                      <tr 
-                        key={duty.id} 
-                        className={`hover:bg-slate-850/50 transition-all duration-75 ${
-                          duty.isCommandAppointed 
-                            ? "bg-sky-500/10 border-y border-sky-500/20" 
-                            : isVacant 
-                            ? "bg-slate-950/20" 
-                            : ""
-                        }`}
-                        onDoubleClick={() => canEdit && onEditDuty(duty)}
-                      >
+                      <React.Fragment key={duty.id}>
+                        {showGroupBanner && (
+                          <tr key={`group-header-${duty.category}`} className="bg-slate-950/95 border-y border-slate-800">
+                            <td colSpan={7} className="px-6 py-2.5">
+                              <div className="flex items-center space-x-2">
+                                <Layers className={`w-3.5 h-3.5 ${isParentGroup ? 'text-emerald-500' : 'text-amber-500'}`} />
+                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isParentGroup ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {isParentGroup ? 'Main Shop Positions' : 'Sub-Shop Position Group'}: <strong className="text-slate-100">{duty.category}</strong>
+                                </span>
+                                {!isParentGroup && (
+                                  <span className="text-[9px] text-slate-500 font-mono flex items-center gap-1">
+                                    <ArrowRight className="w-2.5 h-2.5 inline" /> under parent shop: {categoryFilter}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr 
+                          className={`hover:bg-slate-850/50 transition-all duration-75 ${
+                            duty.isCommandAppointed 
+                              ? "bg-sky-500/10 border-y border-sky-500/20" 
+                              : isVacant 
+                              ? "bg-slate-950/20" 
+                              : ""
+                          }`}
+                          onDoubleClick={() => canEdit && onEditDuty(duty)}
+                        >
                       {/* Job / Position Title */}
                       <td className="px-6 py-4">
                         <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
@@ -1061,6 +1103,7 @@ export default function DutiesList({
                         )}
                       </td>
                     </tr>
+                    </React.Fragment>
                   );
                 })}
                 {visibleCount < filteredDuties.length && (

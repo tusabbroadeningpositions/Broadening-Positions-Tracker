@@ -54,4 +54,16 @@ export interface UpdateRequest {
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   updatedAt?: string;
+  currentJobTitle?: string;
+  requestedJobTitle?: string;
+  currentTierLevel?: number | null;
+  requestedTierLevel?: number | null;
+  currentIsCommandAppointed?: boolean;
+  requestedIsCommandAppointed?: boolean;
+}
+
+export interface ShopRelationship {
+  id: string; // parentShop
+  parentShop: string;
+  subShops: string[];
 }

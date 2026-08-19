@@ -7,7 +7,7 @@ import VacanciesView from "./components/VacanciesView";
 import StatisticsView from "./components/StatisticsView";
 import DutyFormModal from "./components/DutyFormModal";
 
-import { Duty, UpdateRequest } from "./types";
+import { Duty, UpdateRequest, ShopRelationship } from "./types";
 import { 
   loadDuties, 
   saveDuties, 
@@ -19,7 +19,9 @@ import {
   syncSoldierRankToFirestore,
   syncRenameCategoryToFirestore,
   batchSyncDutiesToFirestore,
-  syncDeleteCategoryToFirestore
+  syncDeleteCategoryToFirestore,
+  saveShopRelationship,
+  deleteShopRelationship
 } from "./data/dutiesStore";
 import { db } from "./lib/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
@@ -59,6 +61,16 @@ export default function App() {
       ...doc.data()
     })) || []) as any[];
   }, [firestoreDraftsSnap]);
+
+  // Load shop relationships from Firestore in real-time
+  const shopRelationshipsRef = collection(db, "shop_relationships");
+  const [firestoreRelationshipsSnap] = useCollection(shopRelationshipsRef);
+  const shopRelationships = useMemo(() => {
+    return (firestoreRelationshipsSnap?.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) || []) as ShopRelationship[];
+  }, [firestoreRelationshipsSnap]);
   
   const hasSeededRef = useRef(false);
 
@@ -375,6 +387,7 @@ export default function App() {
         onEditDuty={handleTriggerEdit}
         vacancyDrafts={vacancyDrafts}
         onOpenDraft={handleOpenDraftForReview}
+        shopRelationships={shopRelationships}
       />
 
       {/* Main Content Area */}
@@ -393,6 +406,7 @@ export default function App() {
             searchQuery={searchQuery}
             onClearSearch={() => setSearchQuery("")}
             myShopTrigger={myShopTrigger}
+            shopRelationships={shopRelationships}
           />
         )}
 

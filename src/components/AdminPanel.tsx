@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet, FileText, Mail } from "lucide-react";
 import * as XLSX from "xlsx";
-import { Duty, UpdateRequest } from "../types";
+import { Duty, UpdateRequest, ShopRelationship } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
 import UpdateRequestsConsole from "./UpdateRequestsConsole";
 import VacancyDraftsConsole from "./VacancyDraftsConsole";
@@ -25,6 +25,7 @@ interface AdminPanelProps {
   onEditDuty?: (duty: Duty) => void;
   vacancyDrafts?: any[];
   onOpenDraft?: (duty: Duty, draft: any) => void;
+  shopRelationships?: ShopRelationship[];
 }
 
 export default function AdminPanel({
@@ -45,6 +46,7 @@ export default function AdminPanel({
   onEditDuty = () => {},
   vacancyDrafts = [],
   onOpenDraft = () => {},
+  shopRelationships = [],
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -400,6 +402,7 @@ export default function AdminPanel({
         duties={allDuties}
         onRenameCategory={onRenameCategory}
         onDeleteCategory={onDeleteCategory}
+        shopRelationships={shopRelationships}
       />
 
       {/* Login Modal - Triggered from Header */}
