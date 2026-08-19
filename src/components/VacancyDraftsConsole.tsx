@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
 import { updateVacancyDraftStatus, deleteVacancyDraft } from "../data/dutiesStore";
 import { getShareableDraftUrl } from "../utils/shareUtils";
@@ -6,6 +6,7 @@ import {
   X, Check, AlertCircle, Calendar, FileText, Trash2, 
   Copy, ExternalLink, ThumbsUp, ThumbsDown, User, Mail, Award, Clock
 } from "lucide-react";
+import { getEmailTemplatesFromFirestore, formatEmailTemplate } from "../data/emailTemplates";
 
 interface VacancyDraftsConsoleProps {
   isOpen: boolean;
@@ -30,6 +31,17 @@ export default function VacancyDraftsConsole({
   const [rejectFeedback, setRejectFeedback] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Email templates state
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmailTemplatesFromFirestore()
+        .then((temps) => setEmailTemplates(temps))
+        .catch((err) => console.error("Error loading templates in drafts console:", err));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Filter drafts
@@ -39,14 +51,25 @@ export default function VacancyDraftsConsole({
 
   const handleApproveClick = async (draft: any) => {
     const posTitle = draft.positionTitle || "Position";
-    const emailSubject = `Vacancy Announcement for ${posTitle} has been approved.`;
-    const emailBody = `Your vacancy announcement draft for ${posTitle} has been approved by the Broadening Positions Management Team and has been added to the BP vacancies page.
+
+    const template = emailTemplates.find(t => t.id === "vacancy_approved");
+    const replacements = {
+      "{positionTitle}": posTitle,
+      "{shopName}": draft.shopName || "",
+      "{pocRankName}": draft.pocRankName || ""
+    };
+
+    const subjectTemplate = template?.subject || `Vacancy Announcement for {positionTitle} has been approved.`;
+    const bodyTemplate = template?.body || `Your vacancy announcement draft for {positionTitle} has been approved by the Broadening Positions Management Team and has been added to the BP vacancies page.
 
 You may now send the vacancy announcement to ELs for full dissemination. Please use the EL distro list in Outlook.
 
 Respectfully,
 
 The Broadening Positions Management Team`;
+
+    const emailSubject = formatEmailTemplate(subjectTemplate, replacements);
+    const emailBody = formatEmailTemplate(bodyTemplate, replacements);
 
     const pocEmail = draft.pocEmail || "";
     const mailtoUrl = `mailto:${pocEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
@@ -85,13 +108,27 @@ The Broadening Positions Management Team`;
   const handleConfirmReject = async (draft: any) => {
     const feedback = rejectFeedback.trim();
     const editUrl = getShareableDraftUrl(draft.id);
-    const emailSubject = `Vacancy Announcement Draft ${draft.positionTitle}: Feedback`;
-    const emailBody = `Your Vacancy Announcement Draft needs edits ${editUrl}
+    const posTitle = draft.positionTitle || "Position";
 
-Feedback: ${feedback || "Please see attached comments."}
+    const template = emailTemplates.find(t => t.id === "vacancy_rejected");
+    const replacements = {
+      "{positionTitle}": posTitle,
+      "{shopName}": draft.shopName || "",
+      "{pocRankName}": draft.pocRankName || "",
+      "{editUrl}": editUrl,
+      "{feedback}": feedback || "Please see attached comments."
+    };
+
+    const subjectTemplate = template?.subject || `Vacancy Announcement Draft {positionTitle}: Feedback`;
+    const bodyTemplate = template?.body || `Your Vacancy Announcement Draft needs edits: {editUrl}
+
+Feedback: {feedback}
 
 Respectfully,
 Broadening Positions Team`;
+
+    const emailSubject = formatEmailTemplate(subjectTemplate, replacements);
+    const emailBody = formatEmailTemplate(bodyTemplate, replacements);
 
     const mailtoUrl = `mailto:${draft.pocEmail}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     

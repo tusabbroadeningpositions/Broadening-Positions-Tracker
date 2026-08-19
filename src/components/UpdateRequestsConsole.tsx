@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UpdateRequest, Duty } from "../types";
 import { approveUpdateRequest, updateRequestStatus, deleteUpdateRequest } from "../data/dutiesStore";
 import { X, Check, AlertCircle, Calendar, Shield, Edit3, Trash2, ArrowRight, GitCompare, Maximize2, FileText } from "lucide-react";
+import { getEmailTemplatesFromFirestore, formatEmailTemplate } from "../data/emailTemplates";
 
 interface UpdateRequestsConsoleProps {
   isOpen: boolean;
@@ -32,6 +33,17 @@ export default function UpdateRequestsConsole({
   // State for side-by-side scope review modal
   const [viewingScopeReq, setViewingScopeReq] = useState<UpdateRequest | null>(null);
 
+  // Email templates state
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmailTemplatesFromFirestore()
+        .then((temps) => setEmailTemplates(temps))
+        .catch((err) => console.error("Error loading templates in requests console:", err));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Filter requests
@@ -41,14 +53,27 @@ export default function UpdateRequestsConsole({
 
   const sendApprovalEmail = (req: UpdateRequest) => {
     if (!req.requestorEmail) return;
-    const subject = `BP Tracker change request: ${req.jobTitle}`;
-    const body = `Dear ${req.requestor},
 
-You request to change ${req.jobTitle} has been approved and updated.
+    const template = emailTemplates.find(t => t.id === "roster_update_approved");
+    const replacements = {
+      "{requestor}": req.requestor || "",
+      "{jobTitle}": req.jobTitle || "",
+      "{category}": req.category || "",
+      "{requestedLastName}": req.requestedLastName || "",
+      "{requestedRank}": req.requestedRank || ""
+    };
+
+    const subjectTemplate = template?.subject || `BP Tracker change request: {jobTitle}`;
+    const bodyTemplate = template?.body || `Dear {requestor},
+
+Your request to change {jobTitle} has been approved and updated.
 
 Respectfully,
 
 The BP Team`;
+
+    const subject = formatEmailTemplate(subjectTemplate, replacements);
+    const body = formatEmailTemplate(bodyTemplate, replacements);
 
     const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
@@ -56,14 +81,28 @@ The BP Team`;
 
   const sendRejectionEmail = (req: UpdateRequest, reason: string) => {
     if (!req.requestorEmail) return;
-    const subject = `BP Tracker ${req.jobTitle} update rejected`;
-    const body = `Dear ${req.requestor},
 
-Your request to change ${req.jobTitle} on the BP tracker has been rejected. ${reason}
+    const template = emailTemplates.find(t => t.id === "roster_update_rejected");
+    const replacements = {
+      "{requestor}": req.requestor || "",
+      "{jobTitle}": req.jobTitle || "",
+      "{category}": req.category || "",
+      "{reason}": reason || ""
+    };
+
+    const subjectTemplate = template?.subject || `BP Tracker {jobTitle} update rejected`;
+    const bodyTemplate = template?.body || `Dear {requestor},
+
+Your request to change {jobTitle} on the BP tracker has been rejected.
+
+Reason: {reason}
 
 Respectfully,
 
 The BP Team`;
+
+    const subject = formatEmailTemplate(subjectTemplate, replacements);
+    const body = formatEmailTemplate(bodyTemplate, replacements);
 
     const mailtoUrl = `mailto:${encodeURIComponent(req.requestorEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;

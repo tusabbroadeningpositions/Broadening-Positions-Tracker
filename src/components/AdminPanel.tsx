@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet, FileText } from "lucide-react";
+import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet, FileText, Mail } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Duty, UpdateRequest } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
 import UpdateRequestsConsole from "./UpdateRequestsConsole";
 import VacancyDraftsConsole from "./VacancyDraftsConsole";
+import EmailTemplatesModal from "./EmailTemplatesModal";
 
 interface AdminPanelProps {
   isAdmin: boolean;
@@ -52,6 +53,7 @@ export default function AdminPanel({
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showRequestsConsole, setShowRequestsConsole] = useState(false);
   const [showVacancyConsole, setShowVacancyConsole] = useState(false);
+  const [showEmailTemplates, setShowEmailTemplates] = useState(false);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,6 +307,18 @@ export default function AdminPanel({
                 </button>
               )}
 
+              {/* Manage Emails */}
+              {isAdmin && (
+                <button
+                  onClick={() => setShowEmailTemplates(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 border border-indigo-800/50 rounded text-xs font-semibold shadow-sm transition duration-150"
+                  title="Edit automated draft emails"
+                >
+                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Manage Emails</span>
+                </button>
+              )}
+
               {/* Update Requests Button with Badge */}
               {(isAdmin || isHR || !!allowedCategory) && (
                 <button
@@ -486,6 +500,12 @@ export default function AdminPanel({
         drafts={filteredVacancyDrafts}
         allDuties={allDuties}
         onOpenDraft={onOpenDraft}
+      />
+
+      {/* Email Templates Modal */}
+      <EmailTemplatesModal
+        isOpen={showEmailTemplates}
+        onClose={() => setShowEmailTemplates(false)}
       />
     </>
   );

@@ -249,7 +249,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
         <div>
           <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
             <Layers className="w-5 h-5 text-emerald-500" />
-            Vacancy Announcements Archive & Registry
+            Vacancy Announcements
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
             Browse active announcements or view the historic directory of filled positions.

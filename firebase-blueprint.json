@@ -83,9 +83,25 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["dutyId", "positionTitle", "shopName", "status", "createdAt"]
+    },
+    "EmailTemplate": {
+      "title": "EmailTemplate",
+      "description": "An editable email template used for automated admin notifications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "subject", "body"]
     }
   },
   "firestore": {
+    "/email_templates/{templateId}": {
+      "schema": "EmailTemplate",
+      "description": "Collection of default email templates for status changes."
+    },
     "/duties/{dutyId}": {
       "schema": "Duty",
       "description": "Collection of all broadening and collateral duties."

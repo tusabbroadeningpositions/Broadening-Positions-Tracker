@@ -69,6 +69,15 @@ service cloud.firestore {
         && (!('admin_secret' in data) || data.admin_secret is string);
     }
 
+    function isValidEmailTemplate(data) {
+      return data.keys().hasAll(['id', 'subject', 'body'])
+        && data.id is string && data.id.size() <= 100
+        && data.subject is string && data.subject.size() <= 500
+        && data.body is string && data.body.size() <= 10000
+        && (!('updatedAt' in data) || data.updatedAt is string)
+        && (!('admin_secret' in data) || data.admin_secret is string);
+    }
+
     // --- Collections ---
     
     // Admins collection: only readable/writable by existing admins, 
@@ -100,6 +109,14 @@ service cloud.firestore {
     match /vacancy_drafts/{draftId} {
       allow read, create: if true;
       allow update, delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024" || isAdmin();
+    }
+
+    // Email Templates collection
+    match /email_templates/{templateId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
+                            && isValidEmailTemplate(request.resource.data);
+      allow delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
     }
   }
 }
