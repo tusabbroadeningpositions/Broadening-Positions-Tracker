@@ -265,6 +265,34 @@ export default function DutyFormModal({
     });
   };
 
+  const handleDoneEditingScope = () => {
+    if (editingDuty) {
+      const parsedTier = tierLevel === "N/A" ? null : parseInt(tierLevel, 10);
+      onSave({
+        id: editingDuty.id,
+        category: category.trim(),
+        jobTitle: jobTitle.trim(),
+        lastName: lastName.trim() || "VACANT",
+        rank: lastName.trim().toUpperCase() === "VACANT" ? "" : rank.trim(),
+        dateStarted: dateStarted.trim(),
+        termLength: isNonTiered ? "" : termLength.trim(),
+        termEndDate: isNonTiered ? "" : termEndDate.trim(),
+        elementOrGroup: elementOrGroup.trim(),
+        tierLevel: isNonTiered ? null : parsedTier,
+        specialized,
+        dutyType,
+        isCommandAppointed,
+        isNonTiered,
+        scopeOfResponsibilities: scopeOfResponsibilities.trim(),
+        seniorRaterAbbreviation: seniorRaterAbbreviation.trim(),
+      });
+      setShowScopeInput(false);
+      onClose();
+    } else {
+      setShowScopeInput(false);
+    }
+  };
+
   // Filter lists for suggestions
   const filteredNames = lastNameSuggestions.filter(name =>
     name.toLowerCase().includes(lastName.toLowerCase()) && name.toLowerCase() !== lastName.toLowerCase()
@@ -789,7 +817,7 @@ export default function DutyFormModal({
               </button>
               <button
                 type="button"
-                onClick={() => setShowScopeInput(false)}
+                onClick={handleDoneEditingScope}
                 className="px-6 py-2.5 text-xs font-black text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 rounded transition cursor-pointer shadow-sm"
               >
                 Done Editing
