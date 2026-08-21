@@ -45,11 +45,14 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [copiedShareable, setCopiedShareable] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailReminderModal, setShowEmailReminderModal] = useState(false);
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
 
   // 1. Basic Memo Info states
   const [positionTitle, setPositionTitle] = useState(initialDraft?.positionTitle || duty.jobTitle || "");
   const [shopName, setShopName] = useState(initialDraft?.shopName || duty.category || "");
   const [bpTitle, setBpTitle] = useState(initialDraft?.bpTitle || duty.jobTitle || "");
+  const [slots, setSlots] = useState<number>(() => (initialDraft?.slots ? Number(initialDraft.slots) : 1));
   const [tierLevel, setTierLevel] = useState(() => initialDraft?.tierLevel || (duty.tierLevel !== null && duty.tierLevel !== undefined ? String(duty.tierLevel) : "1"));
   const [isSpecialty, setIsSpecialty] = useState(initialDraft ? !!initialDraft.isSpecialty : (duty.specialized || false));
   const [termDuration, setTermDuration] = useState(() => {
@@ -103,6 +106,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         positionTitle: positionTitle.trim(),
         shopName: shopName.trim(),
         bpTitle: bpTitle.trim(),
+        slots: Number(slots) || 1,
         tierLevel: tierLevel.trim(),
         isSpecialty: !!isSpecialty,
         termDuration: termDuration.trim(),
@@ -120,7 +124,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         updatedAt: new Date().toISOString()
       };
 
-      let docId = initialDraft?.id;
+      let docId = draftId;
       if (docId) {
         await setDoc(doc(db, "vacancy_drafts", docId), {
           ...draftData,
@@ -129,6 +133,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       } else {
         const docRef = await addDoc(collection(db, "vacancy_drafts"), draftData);
         docId = docRef.id;
+        setDraftId(docRef.id);
       }
 
       const generatedUrl = getShareableDraftUrl(docId!);
@@ -150,6 +155,118 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
     }
   };
 
+  const hasUnsavedChanges = () => {
+    const normalize = (val: any) => (val === null || val === undefined ? "" : String(val).trim());
+    
+    const isEligibilityModified = JSON.stringify(eligibilityRequirements.map(r => normalize(r)).filter(r => r !== "")) !== 
+      JSON.stringify((initialDraft?.eligibilityRequirements || ["", ""]).map((r: any) => normalize(r)).filter((r: string) => r !== ""));
+      
+    const isResponsibilitiesModified = JSON.stringify(responsibilities.map(r => normalize(r)).filter(r => r !== "")) !== 
+      JSON.stringify((initialDraft?.responsibilities || ["", ""]).map((r: any) => normalize(r)).filter((r: string) => r !== ""));
+    
+    let defaultTerm = "";
+    if (duty.specialized) {
+      defaultTerm = "This is a specialty position with no term limits";
+    } else {
+      if (duty.tierLevel === 1) defaultTerm = "2 to 5 years";
+      else if (duty.tierLevel === 2) defaultTerm = "2 to 6 years";
+      else if (duty.tierLevel === 3) defaultTerm = "3 to 7 years";
+      else if (duty.tierLevel === 4) defaultTerm = "3 to 7 years";
+      else defaultTerm = "2 to 5 years";
+    }
+    const defaultMemoDate = formatDateToMilitary(new Date());
+    const defaultCloseDate = getThirtyDaysAfter(memoDate || defaultMemoDate);
+
+    const isBaseModified = 
+      normalize(positionTitle) !== normalize(initialDraft?.positionTitle || duty.jobTitle || "") ||
+      normalize(shopName) !== normalize(initialDraft?.shopName || duty.category || "") ||
+      normalize(bpTitle) !== normalize(initialDraft?.bpTitle || duty.jobTitle || "") ||
+      (Number(slots) || 1) !== (initialDraft?.slots ? Number(initialDraft.slots) : 1) ||
+      normalize(tierLevel) !== normalize(initialDraft?.tierLevel || (duty.tierLevel !== null && duty.tierLevel !== undefined ? String(duty.tierLevel) : "1")) ||
+      (!!isSpecialty) !== (initialDraft ? !!isSpecialty : (duty.specialized || false)) ||
+      normalize(termDuration) !== normalize(initialDraft?.termDuration || defaultTerm) ||
+      normalize(memoDate) !== normalize(initialDraft?.memoDate || defaultMemoDate) ||
+      normalize(pocRankName) !== normalize(initialDraft?.pocRankName || "") ||
+      normalize(pocEmail) !== normalize(initialDraft?.pocEmail || "") ||
+      normalize(closeDeadlineDate) !== normalize(initialDraft?.closeDeadlineDate || defaultCloseDate) ||
+      normalize(signerNameCaps) !== normalize(initialDraft?.signerNameCaps || "") ||
+      normalize(signerRank) !== normalize(initialDraft?.signerRank || "") ||
+      normalize(signerTitle) !== normalize(initialDraft?.signerTitle || "");
+
+    return isBaseModified || isEligibilityModified || isResponsibilitiesModified;
+  };
+
+  const handleSaveDraft = async (shouldClose = false) => {
+    setIsSubmitting(true);
+    setStatusMessage(null);
+    try {
+      const { collection, addDoc, doc, setDoc } = await import("firebase/firestore");
+      const { db } = await import("../lib/firebase");
+
+      const draftData = {
+        dutyId: duty.id,
+        positionTitle: positionTitle.trim(),
+        shopName: shopName.trim(),
+        bpTitle: bpTitle.trim(),
+        slots: Number(slots) || 1,
+        tierLevel: tierLevel.trim(),
+        isSpecialty: !!isSpecialty,
+        termDuration: termDuration.trim(),
+        memoDate: memoDate.trim(),
+        eligibilityRequirements: eligibilityRequirements.filter(r => r.trim() !== ""),
+        responsibilities: responsibilities.filter(r => r.trim() !== ""),
+        pocRankName: pocRankName.trim(),
+        pocEmail: pocEmail.trim(),
+        closeDeadlineDate: closeDeadlineDate.trim(),
+        signerNameCaps: signerNameCaps.trim(),
+        signerRank: signerRank.trim(),
+        signerTitle: signerTitle.trim(),
+        status: initialDraft?.status || "pending",
+        createdAt: initialDraft?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      let docId = draftId;
+      if (docId) {
+        await setDoc(doc(db, "vacancy_drafts", docId), {
+          ...draftData,
+          admin_secret: "DUTY_TRACKER_SECRET_2024"
+        }, { merge: true });
+      } else {
+        const docRef = await addDoc(collection(db, "vacancy_drafts"), draftData);
+        docId = docRef.id;
+        setDraftId(docRef.id);
+      }
+
+      if (shouldClose) {
+        onClose();
+      } else {
+        setStatusMessage({
+          type: "success",
+          text: "Progress successfully saved as draft!"
+        });
+      }
+    } catch (err: any) {
+      console.error("Error saving draft progress:", err);
+      if (!shouldClose) {
+        setStatusMessage({
+          type: "error",
+          text: "Failed to save draft progress. Please check connection."
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseAttempt = () => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedPrompt(true);
+    } else {
+      onClose();
+    }
+  };
+
   const getTodayMilitaryFormat = () => {
     const d = new Date();
     const day = d.getDate();
@@ -163,6 +280,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       positionTitle,
       shopName,
       bpTitle,
+      slots: Number(slots) || 1,
       tierLevel,
       termDuration,
       pocRankName,
@@ -197,7 +315,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
             </div>
           </div>
           <button 
-            onClick={onClose}
+            onClick={handleCloseAttempt}
             className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -360,6 +478,46 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             placeholder={formatDateToMilitary(new Date())}
                             className="w-full text-sm bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+                            <span>Open Slots / Vacancies</span>
+                            <span className="text-[10px] text-emerald-400/90 font-mono font-medium">
+                              {slots === 1 ? "1 Position" : `${slots} Positions Available`}
+                            </span>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={50}
+                              value={slots}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                setSlots(isNaN(val) || val < 1 ? 1 : val);
+                              }}
+                              className="w-full text-sm bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                            />
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSlots((prev) => Math.max(1, prev - 1))}
+                                disabled={slots <= 1}
+                                className="w-8 h-9.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
+                                title="Decrease slot count"
+                              >
+                                -
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSlots((prev) => prev + 1)}
+                                className="w-8 h-9.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center justify-center cursor-pointer"
+                                title="Increase slot count"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -729,10 +887,17 @@ ${pocEmail || "[POC email]"}`;
           </div>
           <div className="flex gap-3">
             <button
-              onClick={onClose}
+              onClick={handleCloseAttempt}
               className="text-xs bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold py-2 px-4 rounded-lg transition-colors cursor-pointer"
             >
               Cancel
+            </button>
+            <button
+              disabled={isSubmitting}
+              onClick={() => handleSaveDraft(false)}
+              className="text-xs bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <span>{draftId ? "Save Progress" : "Save Draft"}</span>
             </button>
             <button
               disabled={isSubmitting}
@@ -759,6 +924,53 @@ ${pocEmail || "[POC email]"}`;
         </div>
 
       </div>
+
+      {/* Unsaved Changes Prompt Overlay */}
+      {showUnsavedPrompt && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4 text-left">
+            <div className="flex items-center space-x-2.5 text-amber-400">
+              <HelpCircle className="w-6 h-6" />
+              <h4 className="text-base font-bold text-slate-100">Unsaved Changes</h4>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              You have made modifications to this vacancy announcement. Would you like to save your draft progress before closing?
+            </p>
+
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setShowUnsavedPrompt(false)}
+                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-750 transition cursor-pointer order-3 sm:order-1"
+              >
+                Keep Editing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUnsavedPrompt(false);
+                  onClose();
+                }}
+                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 border border-rose-900/30 rounded-lg transition cursor-pointer order-2 sm:order-2"
+              >
+                Discard Edits
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  setShowUnsavedPrompt(false);
+                  await handleSaveDraft(true);
+                }}
+                className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950 order-1 sm:order-3"
+              >
+                {isSubmitting ? "Saving..." : "Save & Close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -384,8 +384,13 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                     >
                       {/* Position Title & Category */}
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-200 text-sm">{vacancy.positionTitle}</span>
+                          {vacancy.slots && Number(vacancy.slots) > 1 && (
+                            <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-mono text-[9px] font-bold whitespace-nowrap">
+                              {vacancy.slots} Slots
+                            </span>
+                          )}
                           {viewMode === "archived" && (
                             <span className="px-1.5 py-0.5 bg-slate-800 text-slate-400 border border-slate-700/50 rounded font-mono text-[9px] uppercase font-bold">
                               FILLED

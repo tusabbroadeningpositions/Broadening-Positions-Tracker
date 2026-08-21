@@ -74,6 +74,7 @@
         "positionTitle": { "type": "string" },
         "shopName": { "type": "string" },
         "bpTitle": { "type": "string" },
+        "slots": { "type": "number" },
         "tierLevel": { "type": "string" },
         "isSpecialty": { "type": "boolean" },
         "termDuration": { "type": "string" },

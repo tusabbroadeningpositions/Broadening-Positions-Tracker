@@ -96,6 +96,14 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     if (filename.endsWith(".xml")) {
       let xmlText = zip.files[filename].asText();
       
+      // 0. Handle multiple slots in Paragraph 1 if slots > 1
+      const slots = draft.slots && Number(draft.slots) > 1 ? Number(draft.slots) : 1;
+      if (slots > 1) {
+        const p1Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5DD"[^>]*>[\\s\\S]*?<\\/w:p>');
+        const pluralP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking ${slots} highly motivated NCOs to fill the positions of [BP title]. These are Tier [x] Unit positions with a term of [x to x years].</w:t></w:r></w:p>`;
+        xmlText = xmlText.replace(p1Regex, pluralP1Xml);
+      }
+
       // 1. Replace the date (4 December 2024 -> [memoDate])
       if (xmlText.includes("4 December 2024")) {
         xmlText = xmlText.replace("4 December 2024", "[memoDate]");

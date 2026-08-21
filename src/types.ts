@@ -67,3 +67,28 @@ export interface ShopRelationship {
   parentShop: string;
   subShops: string[];
 }
+
+export interface VacancyDraft {
+  id?: string;
+  dutyId: string;
+  positionTitle: string;
+  shopName: string;
+  bpTitle?: string;
+  slots?: number;
+  tierLevel?: string;
+  isSpecialty?: boolean;
+  termDuration?: string;
+  memoDate?: string;
+  eligibilityRequirements?: string[];
+  responsibilities?: string[];
+  pocRankName?: string;
+  pocEmail?: string;
+  closeDeadlineDate?: string;
+  signerNameCaps?: string;
+  signerRank?: string;
+  signerTitle?: string;
+  status: "pending" | "reviewed" | "approved" | "rejected" | "filled";
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}

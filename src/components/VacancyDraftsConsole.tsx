@@ -291,9 +291,14 @@ Broadening Positions Team`;
                   >
                     {/* Position Header Banner */}
                     <div className="px-4 py-2.5 bg-slate-950 border-b border-slate-850 flex items-center justify-between flex-wrap gap-2 text-xs">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-2">{draft.shopName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mr-1">{draft.shopName}</span>
                         <span className="font-bold text-slate-200">{draft.positionTitle}</span>
+                        {draft.slots && Number(draft.slots) > 1 && (
+                          <span className="px-1.5 py-0.5 bg-emerald-950/80 text-emerald-400 border border-emerald-900 rounded font-mono text-[9px] font-bold">
+                            {draft.slots} Slots
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
                         <Calendar className="w-3.5 h-3.5 text-slate-500" />
