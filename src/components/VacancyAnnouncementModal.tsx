@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
-import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip } from "lucide-react";
+import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip, ArrowRight } from "lucide-react";
 import { downloadVacancyMemo } from "../utils/docxExporter";
 import { getShareableDraftUrl } from "../utils/shareUtils";
 
@@ -93,7 +93,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [signerRank, setSignerRank] = useState(initialDraft?.signerRank || "");
   const [signerTitle, setSignerTitle] = useState(initialDraft?.signerTitle || "");
 
-  const handleSubmitForReview = async () => {
+  const handleSubmitForReview = async (shouldClose = false) => {
     setIsSubmitting(true);
     setStatusMessage(null);
     setShareableUrl(null);
@@ -136,20 +136,26 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         setDraftId(docRef.id);
       }
 
-      const generatedUrl = getShareableDraftUrl(docId!);
-      setShareableUrl(generatedUrl);
-      setStatusMessage({
-        type: "success",
-        text: initialDraft 
-          ? "Draft successfully resubmitted to the Admin suite! Shareable link updated below."
-          : "Draft successfully submitted to the Admin suite! Shareable link generated below."
-      });
+      if (shouldClose) {
+        onClose();
+      } else {
+        const generatedUrl = getShareableDraftUrl(docId!);
+        setShareableUrl(generatedUrl);
+        setStatusMessage({
+          type: "success",
+          text: initialDraft 
+            ? "Draft successfully resubmitted to the Admin suite! Shareable link updated below."
+            : "Draft successfully submitted to the Admin suite! Shareable link generated below."
+        });
+      }
     } catch (err: any) {
       console.error("Error submitting vacancy draft:", err);
-      setStatusMessage({
-        type: "error",
-        text: "Failed to submit vacancy draft. Please verify connection and try again."
-      });
+      if (!shouldClose) {
+        setStatusMessage({
+          type: "error",
+          text: "Failed to submit vacancy draft. Please verify connection and try again."
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -582,6 +588,17 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           />
                         </div>
                       </div>
+
+                      <div className="flex justify-end pt-4 border-t border-slate-800/60 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("eligibility")}
+                          className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Next: Eligibility Requirements</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -637,13 +654,21 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                         })}
                       </div>
 
-                      <div className="flex justify-end pt-1">
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-800/60 mt-4">
                         <button
                           type="button"
                           onClick={() => setEligibilityRequirements([...eligibilityRequirements, ""])}
                           className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
                         >
                           + Add Requirement
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("duties")}
+                          className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Next: Responsibilities</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -708,13 +733,21 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                         })}
                       </div>
 
-                      <div className="flex justify-end pt-1">
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-800/60 mt-4">
                         <button
                           type="button"
                           onClick={() => setResponsibilities([...responsibilities, ""])}
                           className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
                         >
                           + Add Responsibility
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("authority")}
+                          className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Next: POC & Signer</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -894,14 +927,7 @@ ${pocEmail || "[POC email]"}`;
             </button>
             <button
               disabled={isSubmitting}
-              onClick={() => handleSaveDraft(false)}
-              className="text-xs bg-slate-850 hover:bg-slate-800 border border-slate-750 text-slate-200 font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <span>{draftId ? "Save Progress" : "Save Draft"}</span>
-            </button>
-            <button
-              disabled={isSubmitting}
-              onClick={handleSubmitForReview}
+              onClick={() => handleSubmitForReview(false)}
               className="text-xs bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-850 disabled:text-slate-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg shadow-indigo-600/10 transition-colors flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
@@ -931,11 +957,15 @@ ${pocEmail || "[POC email]"}`;
           <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150 p-6 space-y-4 text-left">
             <div className="flex items-center space-x-2.5 text-amber-400">
               <HelpCircle className="w-6 h-6" />
-              <h4 className="text-base font-bold text-slate-100">Unsaved Changes</h4>
+              <h4 className="text-base font-bold text-slate-100">
+                {draftId ? "Save Changes" : "Submit Draft for Review"}
+              </h4>
             </div>
 
             <p className="text-sm text-slate-300 leading-relaxed font-sans">
-              You have made modifications to this vacancy announcement. Would you like to save your draft progress before closing?
+              {draftId 
+                ? "You have made modifications to this vacancy announcement. Would you like to save changes before closing?"
+                : "You have created a new vacancy announcement. Would you like to submit this draft for review before closing?"}
             </p>
 
             <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
@@ -961,11 +991,15 @@ ${pocEmail || "[POC email]"}`;
                 disabled={isSubmitting}
                 onClick={async () => {
                   setShowUnsavedPrompt(false);
-                  await handleSaveDraft(true);
+                  if (draftId) {
+                    await handleSaveDraft(true);
+                  } else {
+                    await handleSubmitForReview(true);
+                  }
                 }}
                 className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950 order-1 sm:order-3"
               >
-                {isSubmitting ? "Saving..." : "Save & Close"}
+                {isSubmitting ? "Processing..." : (draftId ? "Save & Close" : "Submit & Close")}
               </button>
             </div>
           </div>
