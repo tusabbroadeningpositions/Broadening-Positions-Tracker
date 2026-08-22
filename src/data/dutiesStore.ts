@@ -94,11 +94,78 @@ export function saveDuties(duties: Duty[]): void {
 export async function syncDutyToFirestore(duty: Duty): Promise<void> {
   const path = `duties/${duty.id}`;
   try {
-    await setDoc(doc(db, "duties", duty.id), {
-      ...duty,
+    const updatedAt = new Date().toISOString();
+    let finalDuty = { ...duty };
+
+    // Auto-fill seniorRaterAbbreviation and scopeOfResponsibilities from existing matching positions if empty/missing
+    if (finalDuty.jobTitle) {
+      const q = query(collection(db, "duties"), where("jobTitle", "==", finalDuty.jobTitle));
+      const snapshot = await getDocs(q);
+      
+      let existingSR = "";
+      let existingScope = "";
+      
+      snapshot.forEach((d) => {
+        if (d.id !== finalDuty.id) {
+          const data = d.data();
+          if (data.seniorRaterAbbreviation && !existingSR) {
+            existingSR = data.seniorRaterAbbreviation;
+          }
+          if (data.scopeOfResponsibilities && !existingScope) {
+            existingScope = data.scopeOfResponsibilities;
+          }
+        }
+      });
+
+      if (!finalDuty.seniorRaterAbbreviation && existingSR) {
+        finalDuty.seniorRaterAbbreviation = existingSR;
+      }
+      if (!finalDuty.scopeOfResponsibilities && existingScope) {
+        finalDuty.scopeOfResponsibilities = existingScope;
+      }
+    }
+
+    await setDoc(doc(db, "duties", finalDuty.id), {
+      ...finalDuty,
       admin_secret: "DUTY_TRACKER_SECRET_2024",
-      updatedAt: new Date().toISOString()
+      updatedAt
     });
+
+    // Propagate Senior Rater Abbreviation and Scope of Responsibilities to other positions with exact same title
+    if (finalDuty.jobTitle) {
+      const q = query(collection(db, "duties"), where("jobTitle", "==", finalDuty.jobTitle));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      let needsCommit = false;
+      snapshot.forEach((d) => {
+        if (d.id !== finalDuty.id) {
+          const data = d.data();
+          const updates: any = {};
+          let changed = false;
+
+          if (finalDuty.seniorRaterAbbreviation !== undefined && data.seniorRaterAbbreviation !== finalDuty.seniorRaterAbbreviation) {
+            updates.seniorRaterAbbreviation = finalDuty.seniorRaterAbbreviation;
+            changed = true;
+          }
+          if (finalDuty.scopeOfResponsibilities !== undefined && data.scopeOfResponsibilities !== finalDuty.scopeOfResponsibilities) {
+            updates.scopeOfResponsibilities = finalDuty.scopeOfResponsibilities;
+            changed = true;
+          }
+
+          if (changed) {
+            batch.update(d.ref, {
+              ...updates,
+              admin_secret: "DUTY_TRACKER_SECRET_2024",
+              updatedAt
+            });
+            needsCommit = true;
+          }
+        }
+      });
+      if (needsCommit) {
+        await batch.commit();
+      }
+    }
   } catch (fsError) {
     handleFirestoreError(fsError, OperationType.WRITE, path);
   }
@@ -469,6 +536,31 @@ export async function approveUpdateRequest(req: UpdateRequest): Promise<void> {
 
   try {
     await batch.commit();
+
+    // Propagate approved scope of responsibility to all positions with the exact same title
+    const targetJobTitle = req.requestedJobTitle || req.jobTitle;
+    if (targetJobTitle && req.requestedScopeOfResponsibilities !== undefined) {
+      const q = query(collection(db, "duties"), where("jobTitle", "==", targetJobTitle));
+      const snapshot = await getDocs(q);
+      const propBatch = writeBatch(db);
+      let needsCommit = false;
+      snapshot.forEach((d) => {
+        if (d.id !== req.dutyId) {
+          const data = d.data();
+          if (data.scopeOfResponsibilities !== req.requestedScopeOfResponsibilities) {
+            propBatch.update(d.ref, {
+              scopeOfResponsibilities: req.requestedScopeOfResponsibilities,
+              admin_secret: "DUTY_TRACKER_SECRET_2024",
+              updatedAt
+            });
+            needsCommit = true;
+          }
+        }
+      });
+      if (needsCommit) {
+        await propBatch.commit();
+      }
+    }
 
     if (req.requestedLastName && req.requestedLastName.toUpperCase() !== "VACANT") {
       await syncSoldierRankToFirestore(req.requestedLastName, req.requestedRank);
