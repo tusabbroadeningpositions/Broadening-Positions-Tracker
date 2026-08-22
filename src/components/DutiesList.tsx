@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Duty, SoldierSummary, ShopRelationship } from "../types";
-import { ELEMENT_MAP, getTermExpirationStatus } from "../data/dutiesStore";
+import { ELEMENT_MAP, getTermExpirationStatus, parseTermEndDate } from "../data/dutiesStore";
 import { Edit2, Trash2, ShieldAlert, BadgeInfo, Calendar, Layers, Sparkles, AlertCircle, RefreshCw, Download, Send, Check, Megaphone, X, ArrowRight } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -39,6 +39,23 @@ export default function DutiesList({
   shopRelationships = [],
   customShops = [],
 }: DutiesListProps) {
+  const getDescendantShops = (shop: string): string[] => {
+    const result = new Set<string>([shop]);
+    const findSubs = (current: string) => {
+      const relation = (shopRelationships || []).find(r => r.parentShop === current);
+      if (relation && relation.subShops) {
+        for (const sub of relation.subShops) {
+          if (!result.has(sub)) {
+            result.add(sub);
+            findSubs(sub);
+          }
+        }
+      }
+    };
+    findSubs(shop);
+    return Array.from(result);
+  };
+
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [elementFilter, setElementFilter] = useState("All");
@@ -231,10 +248,7 @@ export default function DutiesList({
       // 2. Category Filter
       let matchesCategory = true;
       if (categoryFilter !== "All") {
-        const relation = (shopRelationships || []).find(r => r.parentShop === categoryFilter);
-        const allowedCategories = relation 
-          ? [categoryFilter, ...relation.subShops] 
-          : [categoryFilter];
+        const allowedCategories = getDescendantShops(categoryFilter);
         matchesCategory = allowedCategories.includes(duty.category);
       }
 
@@ -444,12 +458,31 @@ export default function DutiesList({
 
     const numCols = headers.length;
     const tableData: any[] = [];
+    const rowHighlights: string[] = [];
 
     filteredDuties.forEach(duty => {
       const summary = soldierSummaryMap.get((duty.lastName || "").toLowerCase());
       const tierAgg = summary ? summary.tierAggregate : 0;
       const termStatus = getTermExpirationStatus(duty.termEndDate, duty.lastName);
       
+      let highlightType: "expired" | "expiring_soon" | "ok" = "ok";
+      if (duty.lastName && duty.lastName.toUpperCase() !== 'VACANT' && duty.termEndDate) {
+        const expDate = parseTermEndDate(duty.termEndDate);
+        if (expDate) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const targetDate = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+          if (targetDate < today) {
+            highlightType = "expired";
+          } else {
+            const sixMonthsFromToday = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
+            if (targetDate <= sixMonthsFromToday) {
+              highlightType = "expiring_soon";
+            }
+          }
+        }
+      }
+
       const primaryRow: any[] = [
         duty.category || '',
         duty.jobTitle || '',
@@ -464,6 +497,7 @@ export default function DutiesList({
       ];
 
       tableData.push(primaryRow);
+      rowHighlights.push(highlightType);
 
       // Append Senior Rater Abbreviation at top of Scope of Responsibility underneath the row
       if (includeScope) {
@@ -493,6 +527,7 @@ export default function DutiesList({
                 }
               }
             ]);
+            rowHighlights.push("subrow");
           }
         }
       }
@@ -533,7 +568,18 @@ export default function DutiesList({
       alternateRowStyles: {
         fillColor: [255, 255, 255]
       },
-      margin: { top: 31, left: 8, right: 8, bottom: 12 }
+      margin: { top: 31, left: 8, right: 8, bottom: 12 },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const rowIndex = data.row.index;
+          const highlight = rowHighlights[rowIndex];
+          if (highlight === "expired") {
+            data.cell.styles.fillColor = [254, 226, 226]; // Soft red
+          } else if (highlight === "expiring_soon") {
+            data.cell.styles.fillColor = [254, 243, 199]; // Soft yellow
+          }
+        }
+      }
     });
 
     // Add footer with page numbers
@@ -671,11 +717,15 @@ export default function DutiesList({
               onChange={(e) => handleFilterChange(setCategoryFilter, e.target.value)}
             >
               <option value="All">All Shops ({duties.length})</option>
-              {uniqueCategories.map((cat) => (
-                <option key={cat} value={cat} className="text-slate-300 bg-slate-950 font-normal">
-                  {cat} ({duties.filter(d => d.category === cat).length})
-                </option>
-              ))}
+              {uniqueCategories.map((cat) => {
+                const allowed = getDescendantShops(cat);
+                const count = duties.filter(d => allowed.includes(d.category)).length;
+                return (
+                  <option key={cat} value={cat} className="text-slate-300 bg-slate-950 font-normal">
+                    {cat} ({count})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
