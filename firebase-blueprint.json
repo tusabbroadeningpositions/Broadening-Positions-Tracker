@@ -113,9 +113,23 @@
         "subShops": { "type": "array" }
       },
       "required": ["id", "parentShop", "subShops"]
+    },
+    "CustomShop": {
+      "title": "CustomShop",
+      "description": "A manually created, empty shop category that persists in the roster.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
+    "/custom_shops/{shopId}": {
+      "schema": "CustomShop",
+      "description": "Collection of manually created custom shops."
+    },
     "/shop_relationships/{relationshipId}": {
       "schema": "ShopRelationship",
       "description": "Collection of parent-to-sub-shop relationships."

@@ -22,6 +22,7 @@ interface DutiesListProps {
   onClearSearch?: () => void;
   myShopTrigger?: number;
   shopRelationships?: ShopRelationship[];
+  customShops?: string[];
 }
 
 export default function DutiesList({
@@ -36,6 +37,7 @@ export default function DutiesList({
   onClearSearch,
   myShopTrigger,
   shopRelationships = [],
+  customShops = [],
 }: DutiesListProps) {
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -73,8 +75,11 @@ export default function DutiesList({
     duties.forEach(d => {
       if (d.category) cats.add(d.category);
     });
+    customShops.forEach(cs => {
+      if (cs && cs.trim()) cats.add(cs.trim());
+    });
     return Array.from(cats).sort();
-  }, [duties]);
+  }, [duties, customShops]);
 
   const uniquePersonnel = useMemo(() => {
     const names = new Set<string>();

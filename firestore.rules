@@ -88,6 +88,12 @@ service cloud.firestore {
         && (!('admin_secret' in data) || data.admin_secret is string);
     }
 
+    function isValidCustomShop(data) {
+      return data.keys().hasAll(['name'])
+        && data.name is string && data.name.size() <= 150
+        && (!('createdAt' in data) || data.createdAt is string);
+    }
+
     // --- Collections ---
     
     // Admins collection: only readable/writable by existing admins, 
@@ -135,6 +141,12 @@ service cloud.firestore {
       allow create, update: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024"
                             && isValidEmailTemplate(request.resource.data);
       allow delete: if request.resource.data.admin_secret == "DUTY_TRACKER_SECRET_2024";
+    }
+
+    // Custom Shops collection
+    match /custom_shops/{shopId} {
+      allow read, create, delete: if true;
+      allow update: if isValidCustomShop(request.resource.data);
     }
   }
 }

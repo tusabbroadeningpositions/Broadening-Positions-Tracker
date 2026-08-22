@@ -71,6 +71,14 @@ export default function App() {
       ...doc.data()
     })) || []) as ShopRelationship[];
   }, [firestoreRelationshipsSnap]);
+
+  // Load custom empty shops from Firestore in real-time
+  const customShopsRef = collection(db, "custom_shops");
+  const [firestoreCustomShops] = useCollectionData(customShopsRef);
+  const customShopsList = useMemo(() => {
+    if (!firestoreCustomShops) return [];
+    return firestoreCustomShops.map((d: any) => d.name as string).filter(Boolean);
+  }, [firestoreCustomShops]);
   
   const hasSeededRef = useRef(false);
 
@@ -313,14 +321,52 @@ export default function App() {
     await deleteDutyFromFirestore(id);
   };
   
+  // Add a brand new category/shop globally
+  const handleAddCategory = async (categoryName: string) => {
+    const trimmed = categoryName.trim();
+    if (!trimmed) return;
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
+      await setDoc(doc(db, "custom_shops", trimmed), {
+        name: trimmed,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to add custom shop:", err);
+    }
+  };
+  
   // Rename a category globally
   const handleRenameCategory = async (oldName: string, newName: string) => {
-    await syncRenameCategoryToFirestore(oldName, newName);
+    const trimmedOld = oldName.trim();
+    const trimmedNew = newName.trim();
+    if (!trimmedNew || trimmedNew === trimmedOld) return;
+
+    await syncRenameCategoryToFirestore(trimmedOld, trimmedNew);
+
+    try {
+      const { doc, setDoc, deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "custom_shops", trimmedOld));
+      await setDoc(doc(db, "custom_shops", trimmedNew), {
+        name: trimmedNew,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to rename custom shop:", err);
+    }
   };
 
   // Delete a category and all its duties
   const handleDeleteCategory = async (categoryName: string) => {
-    await syncDeleteCategoryToFirestore(categoryName);
+    const trimmed = categoryName.trim();
+    await syncDeleteCategoryToFirestore(trimmed);
+
+    try {
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, "custom_shops", trimmed));
+    } catch (err) {
+      console.error("Failed to delete custom shop:", err);
+    }
   };
 
   // Import custom backup file
@@ -388,6 +434,8 @@ export default function App() {
         vacancyDrafts={vacancyDrafts}
         onOpenDraft={handleOpenDraftForReview}
         shopRelationships={shopRelationships}
+        customShops={customShopsList}
+        onAddCategory={handleAddCategory}
       />
 
       {/* Main Content Area */}
@@ -407,6 +455,7 @@ export default function App() {
             onClearSearch={() => setSearchQuery("")}
             myShopTrigger={myShopTrigger}
             shopRelationships={shopRelationships}
+            customShops={customShopsList}
           />
         )}
 
@@ -446,6 +495,8 @@ export default function App() {
         allowedCategory={allowedCategory}
         isHR={isHR}
         isAdmin={isAdmin}
+        customShops={customShopsList}
+        onAddCategory={handleAddCategory}
       />
 
       {/* Deep-linking Vacancy Announcement / Admin Review Modal */}

@@ -10,6 +10,8 @@ interface CategoryManagerModalProps {
   onRenameCategory: (oldName: string, newName: string) => void;
   onDeleteCategory: (categoryName: string) => void;
   shopRelationships?: ShopRelationship[];
+  customShops?: string[];
+  onAddCategory?: (categoryName: string) => void;
 }
 
 export default function CategoryManagerModal({
@@ -19,24 +21,49 @@ export default function CategoryManagerModal({
   onRenameCategory,
   onDeleteCategory,
   shopRelationships = [],
+  customShops = [],
+  onAddCategory,
 }: CategoryManagerModalProps) {
   const [categories, setCategories] = useState<string[]>([]);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [selectedParentForSubShops, setSelectedParentForSubShops] = useState<string | null>(null);
+  const [newShopInput, setNewShopInput] = useState("");
+  const [createError, setCreateError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      setCategories(getUniqueCategories(duties));
+      const activeFromDuties = getUniqueCategories(duties);
+      const combined = Array.from(new Set([...activeFromDuties, ...customShops])).sort();
+      setCategories(combined);
     }
-  }, [isOpen, duties]);
+  }, [isOpen, duties, customShops]);
 
   if (!isOpen) return null;
 
   const handleClose = () => {
     setSelectedParentForSubShops(null);
+    setNewShopInput("");
+    setCreateError("");
     onClose();
+  };
+
+  const handleCreateShop = () => {
+    setCreateError("");
+    const trimmed = newShopInput.trim();
+    if (!trimmed) {
+      setCreateError("Shop name cannot be empty.");
+      return;
+    }
+    if (categories.some(cat => cat.toLowerCase() === trimmed.toLowerCase())) {
+      setCreateError("A shop with this name already exists.");
+      return;
+    }
+    if (onAddCategory) {
+      onAddCategory(trimmed);
+      setNewShopInput("");
+    }
   };
 
   const handleStartEdit = (cat: string) => {
@@ -219,6 +246,42 @@ export default function CategoryManagerModal({
                   Renaming a shop will update all current assignments associated with that shop name. 
                   Changes are reflected immediately in the roster and filters. Use the <strong className="text-amber-400">Layers</strong> icon to assign hierarchy.
                 </p>
+              </div>
+
+              {/* Create New Shop Form */}
+              <div className="mb-6 p-4 bg-slate-950/40 border border-slate-800 rounded-xl space-y-2.5">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Create New Shop
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter new shop name (e.g. Operations)"
+                    className="flex-1 bg-slate-900 border border-slate-750 hover:border-slate-700 focus:border-emerald-500 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium placeholder:text-slate-600 transition"
+                    value={newShopInput}
+                    onChange={(e) => {
+                      setNewShopInput(e.target.value);
+                      if (createError) setCreateError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateShop();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateShop}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Shop</span>
+                  </button>
+                </div>
+                {createError && (
+                  <p className="text-[10px] text-rose-400 font-semibold leading-none">{createError}</p>
+                )}
               </div>
 
               <div className="space-y-2">

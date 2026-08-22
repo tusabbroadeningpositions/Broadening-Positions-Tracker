@@ -26,6 +26,8 @@ interface AdminPanelProps {
   vacancyDrafts?: any[];
   onOpenDraft?: (duty: Duty, draft: any) => void;
   shopRelationships?: ShopRelationship[];
+  customShops?: string[];
+  onAddCategory?: (categoryName: string) => void;
 }
 
 export default function AdminPanel({
@@ -47,6 +49,8 @@ export default function AdminPanel({
   vacancyDrafts = [],
   onOpenDraft = () => {},
   shopRelationships = [],
+  customShops = [],
+  onAddCategory,
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -403,6 +407,8 @@ export default function AdminPanel({
         onRenameCategory={onRenameCategory}
         onDeleteCategory={onDeleteCategory}
         shopRelationships={shopRelationships}
+        customShops={customShops}
+        onAddCategory={onAddCategory}
       />
 
       {/* Login Modal - Triggered from Header */}

@@ -13,6 +13,8 @@ interface DutyFormModalProps {
   allowedCategory: string | null;
   isHR?: boolean;
   isAdmin?: boolean;
+  customShops?: string[];
+  onAddCategory?: (category: string) => void;
 }
 
 export default function DutyFormModal({
@@ -24,6 +26,8 @@ export default function DutyFormModal({
   allowedCategory,
   isHR = false,
   isAdmin = false,
+  customShops: propCustomShops = [],
+  onAddCategory,
 }: DutyFormModalProps) {
   const [category, setCategory] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -48,7 +52,7 @@ export default function DutyFormModal({
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
 
   // New shop states
-  const [customShops, setCustomShops] = useState<string[]>([]);
+  const customShops = propCustomShops;
   const [showNewShopPrompt, setShowNewShopPrompt] = useState(false);
   const [newShopName, setNewShopName] = useState("");
 
@@ -719,7 +723,9 @@ export default function DutyFormModal({
                 e.preventDefault();
                 const trimmed = newShopName.trim();
                 if (trimmed) {
-                  setCustomShops(prev => [...prev, trimmed]);
+                  if (onAddCategory) {
+                    onAddCategory(trimmed);
+                  }
                   setCategory(trimmed);
                   setShowNewShopPrompt(false);
                   setNewShopName("");
