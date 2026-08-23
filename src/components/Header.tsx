@@ -2,8 +2,8 @@ import React from "react";
 import { Search, ShieldAlert, ShieldCheck, LogOut, Info } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "duties" | "expirations" | "vacancies" | "statistics";
-  setActiveTab: (tab: "duties" | "expirations" | "vacancies" | "statistics") => void;
+  activeTab: "duties" | "expirations" | "vacancies" | "statistics" | "sr_abbreviations";
+  setActiveTab: (tab: "duties" | "expirations" | "vacancies" | "statistics" | "sr_abbreviations") => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isAdmin: boolean;
@@ -64,8 +64,24 @@ export default function Header({
       {/* Lower Bar: Navigation, Search, and Session */}
       <div className="bg-slate-900 border-t border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between py-2 gap-3">
-          {/* Navigation Tabs */}
-          <nav className="flex space-x-6 items-center" aria-label="Tabs">
+          {/* Mobile Navigation Dropdown */}
+          <div className="block md:hidden w-full max-w-xs">
+            <select
+              id="tab-select"
+              className="block w-full py-1.5 px-3 bg-slate-950 border border-slate-800 rounded-md text-xs text-slate-200 font-semibold focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+            >
+              <option value="duties">Duties Roster</option>
+              <option value="expirations">Term Expirations</option>
+              <option value="vacancies">Vacancies</option>
+              <option value="statistics">Statistics</option>
+              <option value="sr_abbreviations">SR Abbreviations</option>
+            </select>
+          </div>
+
+          {/* Navigation Tabs (Desktop Only) */}
+          <nav className="hidden md:flex space-x-6 items-center" aria-label="Tabs">
             <button
               onClick={() => setActiveTab("duties")}
               className={`pb-1 text-xs font-semibold uppercase tracking-wider transition-all duration-150 ${
@@ -105,6 +121,16 @@ export default function Header({
               }`}
             >
               Statistics
+            </button>
+            <button
+              onClick={() => setActiveTab("sr_abbreviations")}
+              className={`pb-1 text-xs font-semibold uppercase tracking-wider transition-all duration-150 ${
+                activeTab === "sr_abbreviations"
+                  ? "text-emerald-500 border-b-2 border-emerald-500"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              SR Abbreviations
             </button>
           </nav>
 

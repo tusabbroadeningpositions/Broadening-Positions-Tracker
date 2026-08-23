@@ -6,6 +6,7 @@ import TermExpirationsView from "./components/TermExpirationsView";
 import VacanciesView from "./components/VacanciesView";
 import StatisticsView from "./components/StatisticsView";
 import DutyFormModal from "./components/DutyFormModal";
+import SRAbbreviationsView from "./components/SRAbbreviationsView";
 
 import { Duty, UpdateRequest, ShopRelationship } from "./types";
 import { 
@@ -33,7 +34,7 @@ import { extractDraftIdFromUrl } from "./utils/shareUtils";
 export default function App() {
   const [duties, setDuties] = useState<Duty[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"duties" | "expirations" | "vacancies" | "statistics">("duties");
+  const [activeTab, setActiveTab] = useState<"duties" | "expirations" | "vacancies" | "statistics" | "sr_abbreviations">("duties");
   
   // Firebase Data
   const dutiesRef = collection(db, "duties");
@@ -477,6 +478,14 @@ export default function App() {
         {activeTab === "statistics" && (
           <StatisticsView
             duties={duties}
+          />
+        )}
+
+        {activeTab === "sr_abbreviations" && (
+          <SRAbbreviationsView
+            duties={duties}
+            shopRelationships={shopRelationships}
+            customShops={customShopsList}
           />
         )}
 
