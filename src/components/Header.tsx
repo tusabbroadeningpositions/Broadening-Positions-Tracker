@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, ShieldAlert, ShieldCheck, LogOut, Info } from "lucide-react";
+import { Search, ShieldAlert, ShieldCheck, LogOut, Info, Lock } from "lucide-react";
 
 interface HeaderProps {
   activeTab: "duties" | "expirations" | "vacancies" | "statistics" | "sr_abbreviations";
@@ -10,6 +10,7 @@ interface HeaderProps {
   isHR?: boolean;
   onAdminClick: () => void;
   onLogout: () => void;
+  onLockSite?: () => void;
   totalDutiesCount: number;
   vacanciesCount: number;
   isLoading?: boolean;
@@ -24,6 +25,7 @@ export default function Header({
   isHR = false,
   onAdminClick,
   onLogout,
+  onLockSite,
   totalDutiesCount,
   vacanciesCount,
   isLoading = false,
@@ -164,6 +166,17 @@ export default function Header({
                 SYNCING...
               </div>
             )}
+            {onLockSite && (
+              <button
+                onClick={onLockSite}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-md border border-slate-800 transition-all duration-150 cursor-pointer"
+                title="Lock Application Access"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span className="hidden sm:inline">LOCK SITE</span>
+              </button>
+            )}
+
             {isHR ? (
               <div className="flex items-center space-x-2">
                 <span className="flex items-center gap-1.5 text-[10px] font-mono bg-sky-950 text-sky-400 border border-sky-800/60 px-2 py-0.5 rounded-sm uppercase tracking-wider">

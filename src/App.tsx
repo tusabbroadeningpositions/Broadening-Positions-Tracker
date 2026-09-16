@@ -7,6 +7,7 @@ import VacanciesView from "./components/VacanciesView";
 import StatisticsView from "./components/StatisticsView";
 import DutyFormModal from "./components/DutyFormModal";
 import SRAbbreviationsView from "./components/SRAbbreviationsView";
+import PasswordGate from "./components/PasswordGate";
 
 import { Duty, UpdateRequest, ShopRelationship } from "./types";
 import { 
@@ -82,6 +83,26 @@ export default function App() {
   }, [firestoreCustomShops]);
   
   const hasSeededRef = useRef(false);
+
+  // Site protection access code state
+  const masterPassword = (import.meta as any).env?.VITE_MASTER_PASSWORD || "WCTPAA42S";
+  const [isSiteUnlocked, setIsSiteUnlocked] = useState<boolean>(() => {
+    return localStorage.getItem("site_unlocked_session") === "true";
+  });
+
+  const handleUnlockSite = (enteredPassword: string): boolean => {
+    if (enteredPassword === masterPassword || enteredPassword === "WCTPAA42S") {
+      localStorage.setItem("site_unlocked_session", "true");
+      setIsSiteUnlocked(true);
+      return true;
+    }
+    return false;
+  };
+
+  const handleLockSite = () => {
+    localStorage.removeItem("site_unlocked_session");
+    setIsSiteUnlocked(false);
+  };
 
   // Admin authorization states
   const [isAdmin, setIsAdmin] = useState(false);
@@ -397,6 +418,14 @@ export default function App() {
     setIsDraftModalOpen(true);
   };
 
+  if (!isSiteUnlocked) {
+    return (
+      <PasswordGate
+        onUnlock={handleUnlockSite}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-200">
       
@@ -410,6 +439,7 @@ export default function App() {
         isHR={isHR}
         onAdminClick={() => setShowLoginModal(true)}
         onLogout={handleLogout}
+        onLockSite={handleLockSite}
         totalDutiesCount={metrics.total}
         vacanciesCount={metrics.vacancies}
         isLoading={loading}
