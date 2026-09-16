@@ -92,3 +92,13 @@ export interface VacancyDraft {
   createdAt: string;
   updatedAt?: string;
 }
+
+export interface CustomShop {
+  id?: string;
+  name: string;
+  manager?: string;
+  managerRank?: string;
+  managerEmail?: string;
+  createdAt?: string;
+}
+

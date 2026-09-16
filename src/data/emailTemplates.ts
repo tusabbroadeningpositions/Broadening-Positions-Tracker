@@ -67,6 +67,26 @@ Feedback: {feedback}
 
 Respectfully,
 Broadening Positions Team`
+  },
+  {
+    id: "shop_maintenance",
+    name: "Shop Maintenance Notice",
+    description: "Template for broadcasting maintenance reminders or announcements to all Shop Managers.",
+    variables: ["{shopManagers}", "{expiredTermsChart}"],
+    subject: "Action Required: Collateral Duty Roster Maintenance",
+    body: `Dear Shop Managers,
+
+Please review and update your respective collateral duty positions and assigned soldiers on the Broadening Positions tracking sheet to ensure all records are current and accurate.
+
+Here is the current list of expired terms requiring immediate attention:
+
+{expiredTermsChart}
+
+If there are any vacant roles or upcoming departures, please update the roster or draft a vacancy announcement as required.
+
+Respectfully,
+
+Broadening Positions Team`
   }
 ];
 

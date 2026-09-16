@@ -9,7 +9,7 @@ import DutyFormModal from "./components/DutyFormModal";
 import SRAbbreviationsView from "./components/SRAbbreviationsView";
 import PasswordGate from "./components/PasswordGate";
 
-import { Duty, UpdateRequest, ShopRelationship } from "./types";
+import { Duty, UpdateRequest, ShopRelationship, CustomShop } from "./types";
 import { 
   loadDuties, 
   saveDuties, 
@@ -80,6 +80,16 @@ export default function App() {
   const customShopsList = useMemo(() => {
     if (!firestoreCustomShops) return [];
     return firestoreCustomShops.map((d: any) => d.name as string).filter(Boolean);
+  }, [firestoreCustomShops]);
+
+  const customShopsDetailed = useMemo(() => {
+    if (!firestoreCustomShops) return [];
+    return firestoreCustomShops.map((d: any) => ({
+      name: d.name || "",
+      manager: d.manager || "",
+      managerEmail: d.managerEmail || "",
+      createdAt: d.createdAt || ""
+    })) as CustomShop[];
   }, [firestoreCustomShops]);
   
   const hasSeededRef = useRef(false);
@@ -391,6 +401,24 @@ export default function App() {
     }
   };
 
+  // Update a shop's manager and manager email details
+  const handleUpdateShopManager = async (shopName: string, manager: string, email: string, managerRank?: string) => {
+    const trimmed = shopName.trim();
+    if (!trimmed) return;
+    try {
+      const { doc, setDoc } = await import("firebase/firestore");
+      await setDoc(doc(db, "custom_shops", trimmed), {
+        name: trimmed,
+        manager: manager.trim(),
+        managerRank: (managerRank || "").trim(),
+        managerEmail: email.trim(),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error("Failed to update custom shop manager:", err);
+    }
+  };
+
   // Import custom backup file
   const handleImportJSON = async (importedDuties: Duty[]) => {
     try {
@@ -466,7 +494,9 @@ export default function App() {
         onOpenDraft={handleOpenDraftForReview}
         shopRelationships={shopRelationships}
         customShops={customShopsList}
+        customShopsDetailed={customShopsDetailed}
         onAddCategory={handleAddCategory}
+        onUpdateShopManager={handleUpdateShopManager}
       />
 
       {/* Main Content Area */}

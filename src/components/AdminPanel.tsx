@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Shield, Plus, Download, Upload, Eye, EyeOff, X, FileJson, Tag, FileSpreadsheet, FileText, Mail } from "lucide-react";
 import * as XLSX from "xlsx";
-import { Duty, UpdateRequest, ShopRelationship } from "../types";
+import { Duty, UpdateRequest, ShopRelationship, CustomShop } from "../types";
 import CategoryManagerModal from "./CategoryManagerModal";
 import UpdateRequestsConsole from "./UpdateRequestsConsole";
 import VacancyDraftsConsole from "./VacancyDraftsConsole";
@@ -27,7 +27,9 @@ interface AdminPanelProps {
   onOpenDraft?: (duty: Duty, draft: any) => void;
   shopRelationships?: ShopRelationship[];
   customShops?: string[];
+  customShopsDetailed?: CustomShop[];
   onAddCategory?: (categoryName: string) => void;
+  onUpdateShopManager?: (shopName: string, manager: string, email: string, managerRank?: string) => void;
 }
 
 export default function AdminPanel({
@@ -50,7 +52,9 @@ export default function AdminPanel({
   onOpenDraft = () => {},
   shopRelationships = [],
   customShops = [],
+  customShopsDetailed = [],
   onAddCategory,
+  onUpdateShopManager,
 }: AdminPanelProps) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -408,7 +412,9 @@ export default function AdminPanel({
         onDeleteCategory={onDeleteCategory}
         shopRelationships={shopRelationships}
         customShops={customShops}
+        customShopsDetailed={customShopsDetailed}
         onAddCategory={onAddCategory}
+        onUpdateShopManager={onUpdateShopManager}
       />
 
       {/* Login Modal - Triggered from Header */}
