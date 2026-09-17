@@ -221,7 +221,7 @@ export default function CategoryManagerModal({
       return;
     }
 
-    const toLine = uniqueEmails.join(";");
+    const toLine = uniqueEmails.join("; ");
     const ccLine = "broadeningpositions@army.mil";
 
     let subject = "";

@@ -79,7 +79,7 @@ The BP Team`;
       .split(/[,;]\s*/)
       .map(e => e.trim())
       .filter(Boolean)
-      .join(";");
+      .join("; ");
 
     const mailtoUrl = `mailto:${recipientEmails}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
@@ -114,7 +114,7 @@ The BP Team`;
       .split(/[,;]\s*/)
       .map(e => e.trim())
       .filter(Boolean)
-      .join(";");
+      .join("; ");
 
     const mailtoUrl = `mailto:${recipientEmails}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;

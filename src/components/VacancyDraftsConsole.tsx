@@ -75,7 +75,7 @@ The Broadening Positions Management Team`;
       .split(/[,;]\s*/)
       .map(e => e.trim())
       .filter(Boolean)
-      .join(";");
+      .join("; ");
 
     const mailtoUrl = `mailto:${pocEmail}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
@@ -139,7 +139,7 @@ Broadening Positions Team`;
       .split(/[,;]\s*/)
       .map(e => e.trim())
       .filter(Boolean)
-      .join(";");
+      .join("; ");
 
     const mailtoUrl = `mailto:${pocEmail}?cc=broadeningpositions@army.mil&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     
