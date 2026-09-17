@@ -210,7 +210,7 @@ export default function CategoryManagerModal({
       return;
     }
 
-    const toLine = uniqueEmails.join(",");
+    const toLine = uniqueEmails.join(";");
     const ccLine = "broadeningpositions@army.mil";
 
     let subject = "";
@@ -236,8 +236,12 @@ export default function CategoryManagerModal({
         body = `Dear Shop Managers,\n\nPlease review and update your respective collateral duty positions and assigned soldiers on the Broadening Positions tracking sheet to ensure all records are current and accurate.\n\nHere is the list of expired terms requiring immediate attention:\n\n${chartStr}\n\nRespectfully,\n\nBroadening Positions Team`;
       }
     }
+    if (type === "blank") {
+      subject = "Collateral Duty Roster Maintenance Notice";
+      body = "Dear Shop Managers,\n\n";
+    }
 
-    const mailtoUrl = `mailto:${encodeURIComponent(toLine)}?cc=${encodeURIComponent(ccLine)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoUrl = `mailto:${toLine}?cc=${encodeURIComponent(ccLine)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     const a = document.createElement("a");
     a.href = mailtoUrl;
