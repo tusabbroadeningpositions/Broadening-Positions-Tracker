@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { X, Edit2, Check, Tag, Info, Trash2, Layers, ArrowLeft, ArrowRight, Plus, User, Mail, Save, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { X, Edit2, Check, Tag, Info, Trash2, Layers, ArrowLeft, ArrowRight, Plus, User, Mail, Save, ChevronDown, ChevronUp, Send, Copy, Download, ExternalLink, FileText } from "lucide-react";
 import { Duty, ShopRelationship, CustomShop } from "../types";
 import { getUniqueCategories, saveShopRelationship, deleteShopRelationship, getTermExpirationStatus } from "../data/dutiesStore";
 import { getEmailTemplatesFromFirestore, EmailTemplate } from "../data/emailTemplates";
@@ -49,6 +49,17 @@ export default function CategoryManagerModal({
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Email Draft Dispatch & Prompt State
+  const [emailDraftPrompt, setEmailDraftPrompt] = useState<{
+    type: "blank" | "maintenance";
+    to: string;
+    cc: string;
+    subject: string;
+    body: string;
+  } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [selectedPromptOption, setSelectedPromptOption] = useState<"choose" | "copy">("choose");
 
   // Roster lists for autofill suggestions
   const rosterNames = React.useMemo(() => {
@@ -241,14 +252,58 @@ export default function CategoryManagerModal({
       body = "Dear Shop Managers,\n\n";
     }
 
-    const mailtoUrl = `mailto:${toLine}?cc=${encodeURIComponent(ccLine)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
+    // Prompt user to choose between mailto link, copy details, or download email draft file
+    setSelectedPromptOption("choose");
+    setEmailDraftPrompt({
+      type,
+      to: toLine,
+      cc: ccLine,
+      subject,
+      body,
+    });
+  };
+
+  const handleLaunchMailto = (to: string, cc: string, subject: string, body: string) => {
+    const mailtoUrl = `mailto:${to}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     const a = document.createElement("a");
     a.href = mailtoUrl;
     a.target = "_blank";
     document.body.appendChild(a);
     a.click();
     a.remove();
+  };
+
+  const handleDownloadEmlFile = (to: string, cc: string, subject: string, body: string, filename?: string) => {
+    const safeFilename = filename || "Collateral_Duty_Maintenance_Draft.eml";
+    const emlContent = [
+      `To: ${to}`,
+      cc ? `Cc: ${cc}` : "",
+      `Subject: ${subject}`,
+      `X-Unsent: 1`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/plain; charset="UTF-8"`,
+      `Content-Transfer-Encoding: 8bit`,
+      ``,
+      body
+    ].filter(line => line !== null && line !== undefined).join("\r\n");
+
+    const blob = new Blob([emlContent], { type: "message/rfc822;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = safeFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2500);
   };
 
   const currentRel = shopRelationships.find(r => r.parentShop === selectedParentForSubShops);
@@ -795,6 +850,294 @@ export default function CategoryManagerModal({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete Shop & Positions</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Draft Method Prompt Modal */}
+      {emailDraftPrompt && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-[70]">
+          <div className="bg-slate-900 border border-slate-750 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4 bg-slate-950">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-800/60 flex items-center justify-center text-indigo-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-100">
+                    {emailDraftPrompt.type === "maintenance" ? "Draft Maintenance Email" : "Draft Shop Managers Email"}
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Choose how you would like to prepare or deliver this email
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEmailDraftPrompt(null)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-5 overflow-y-auto flex-1">
+              {/* Option Selector Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 1. mailto link */}
+                <div
+                  className="bg-slate-950/70 border border-slate-800 hover:border-indigo-500/60 rounded-xl p-3.5 flex flex-col justify-between transition group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2 rounded-lg bg-indigo-950/60 border border-indigo-900/50 text-indigo-400 group-hover:scale-105 transition-transform">
+                        <ExternalLink className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                        mailto link
+                      </span>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                        Launch Mail Client
+                      </h5>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        Opens your system's default email client.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-850">
+                    <button
+                      type="button"
+                      onClick={() => handleLaunchMailto(emailDraftPrompt.to, emailDraftPrompt.cc, emailDraftPrompt.subject, emailDraftPrompt.body)}
+                      className="w-full py-1.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open mailto</span>
+                    </button>
+                    <p className="text-[9px] text-amber-400/80 text-center mt-1.5 leading-tight">
+                      *May be blocked on secure work browsers
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. Download draft file (.eml) */}
+                <div
+                  className="bg-slate-950/70 border border-emerald-900/40 hover:border-emerald-500/60 rounded-xl p-3.5 flex flex-col justify-between transition group relative"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2 rounded-lg bg-emerald-950/60 border border-emerald-900/50 text-emerald-400 group-hover:scale-105 transition-transform">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-800/50">
+                        Work Safe
+                      </span>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-200 group-hover:text-emerald-300 transition-colors">
+                        Download Draft (.eml)
+                      </h5>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        Saves an Outlook draft file. Double-click to open in Outlook.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-850">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadEmlFile(emailDraftPrompt.to, emailDraftPrompt.cc, emailDraftPrompt.subject, emailDraftPrompt.body)}
+                      className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download .eml</span>
+                    </button>
+                    <p className="text-[9px] text-emerald-400/90 text-center mt-1.5 leading-tight">
+                      ✓ Bypasses browser security blocks
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3. Copy Details */}
+                <div
+                  className="bg-slate-950/70 border border-slate-800 hover:border-amber-500/60 rounded-xl p-3.5 flex flex-col justify-between transition group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2 rounded-lg bg-amber-950/60 border border-amber-900/50 text-amber-400 group-hover:scale-105 transition-transform">
+                        <Copy className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                        Clipboard
+                      </span>
+                    </div>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
+                        Copy Details
+                      </h5>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        Copy recipients, subject, and body to paste manually.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-slate-850">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allDetails = `To: ${emailDraftPrompt.to}\nCc: ${emailDraftPrompt.cc}\nSubject: ${emailDraftPrompt.subject}\n\n${emailDraftPrompt.body}`;
+                        handleCopyClipboard(allDetails, "all");
+                      }}
+                      className="w-full py-1.5 px-2 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow"
+                    >
+                      {copiedKey === "all" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedKey === "all" ? "Copied All!" : "Copy All Details"}</span>
+                    </button>
+                    <p className="text-[9px] text-slate-400 text-center mt-1.5 leading-tight">
+                      Or copy fields individually below
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Content Details & Quick Copy Section */}
+              <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 space-y-3.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-850">
+                  <h5 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Email Content Details</span>
+                  </h5>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allDetails = `To: ${emailDraftPrompt.to}\nCc: ${emailDraftPrompt.cc}\nSubject: ${emailDraftPrompt.subject}\n\n${emailDraftPrompt.body}`;
+                      handleCopyClipboard(allDetails, "all_secondary");
+                    }}
+                    className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedKey === "all_secondary" ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400">All Details Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy All Details</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* To Line */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      To: (Shop Managers)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyClipboard(emailDraftPrompt.to, "to")}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedKey === "to" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span className={copiedKey === "to" ? "text-emerald-400" : ""}>{copiedKey === "to" ? "Copied!" : "Copy To"}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={emailDraftPrompt.to}
+                    className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none select-all"
+                  />
+                </div>
+
+                {/* CC Line */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      CC:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyClipboard(emailDraftPrompt.cc, "cc")}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedKey === "cc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span className={copiedKey === "cc" ? "text-emerald-400" : ""}>{copiedKey === "cc" ? "Copied!" : "Copy CC"}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={emailDraftPrompt.cc}
+                    className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none select-all"
+                  />
+                </div>
+
+                {/* Subject Line */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Subject:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyClipboard(emailDraftPrompt.subject, "subject")}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedKey === "subject" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span className={copiedKey === "subject" ? "text-emerald-400" : ""}>{copiedKey === "subject" ? "Copied!" : "Copy Subject"}</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={emailDraftPrompt.subject}
+                    className="w-full bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 font-medium focus:outline-none select-all"
+                  />
+                </div>
+
+                {/* Body Textarea */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Message Body:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyClipboard(emailDraftPrompt.body, "body")}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedKey === "body" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span className={copiedKey === "body" ? "text-emerald-400" : ""}>{copiedKey === "body" ? "Copied!" : "Copy Body"}</span>
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    rows={6}
+                    value={emailDraftPrompt.body}
+                    className="w-full bg-slate-900 border border-slate-800 rounded p-3 text-xs text-slate-300 focus:outline-none font-mono resize-none leading-relaxed select-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                Tip: On restricted work PCs, downloading the <strong>.eml file</strong> or using <strong>Copy Details</strong> avoids protocol errors.
+              </span>
+              <button
+                type="button"
+                onClick={() => setEmailDraftPrompt(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>
