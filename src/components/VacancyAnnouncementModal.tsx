@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
-import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip, ArrowRight } from "lucide-react";
+import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip, ArrowRight, Eye, Edit3 } from "lucide-react";
 import { downloadVacancyMemo } from "../utils/docxExporter";
 import { getShareableDraftUrl } from "../utils/shareUtils";
+import VacancyMemoPreviewModal, { PreviewTarget, RANK_REQUIREMENT_OPTIONS } from "./VacancyMemoPreviewModal";
 
 interface VacancyAnnouncementModalProps {
   duty: Duty;
@@ -47,6 +48,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [showEmailReminderModal, setShowEmailReminderModal] = useState(false);
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
 
   // 1. Basic Memo Info states
   const [positionTitle, setPositionTitle] = useState(initialDraft?.positionTitle || duty.jobTitle || "");
@@ -68,10 +70,12 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   });
   const [memoDate, setMemoDate] = useState(() => initialDraft?.memoDate || formatDateToMilitary(new Date()));
 
-  // 2. Eligibility Requirements states (Dynamic array starting with 2 empty fields)
+  // 2. Eligibility Requirements states (Dynamic array starting with 2 items, rank requirement default)
   const [eligibilityRequirements, setEligibilityRequirements] = useState<string[]>(() => {
-    if (initialDraft?.eligibilityRequirements) return initialDraft.eligibilityRequirements;
-    return ["", ""];
+    if (initialDraft?.eligibilityRequirements && initialDraft.eligibilityRequirements.length > 0) {
+      return initialDraft.eligibilityRequirements;
+    }
+    return ["SSG and above", ""];
   });
 
   // 3. Duties & Responsibilities states (Dynamic array starting with 2 empty fields)
@@ -92,6 +96,86 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [signerNameCaps, setSignerNameCaps] = useState(initialDraft?.signerNameCaps || "");
   const [signerRank, setSignerRank] = useState(initialDraft?.signerRank || "");
   const [signerTitle, setSignerTitle] = useState(initialDraft?.signerTitle || "");
+  const [paragraph1CustomText, setParagraph1CustomText] = useState<string>(initialDraft?.paragraph1CustomText || "");
+  const [paragraph5CustomText, setParagraph5CustomText] = useState<string>(initialDraft?.paragraph5CustomText || "");
+
+  const handleUpdateField = (fieldKey: string, value: any) => {
+    switch (fieldKey) {
+      case "positionTitle":
+        setPositionTitle(value);
+        setBpTitle(value);
+        break;
+      case "shopName":
+        setShopName(value);
+        break;
+      case "bpTitle":
+        setBpTitle(value);
+        break;
+      case "slots":
+        setSlots(Number(value) || 1);
+        break;
+      case "tierLevel":
+        setTierLevel(value);
+        break;
+      case "isSpecialty":
+        setIsSpecialty(!!value);
+        break;
+      case "termDuration":
+        setTermDuration(value);
+        break;
+      case "memoDate":
+        setMemoDate(value);
+        break;
+      case "pocRankName":
+        setPocRankName(value);
+        break;
+      case "pocEmail":
+        setPocEmail(value);
+        break;
+      case "closeDeadlineDate":
+        setCloseDeadlineDate(value);
+        break;
+      case "signerNameCaps":
+        setSignerNameCaps(value);
+        break;
+      case "signerRank":
+        setSignerRank(value);
+        break;
+      case "signerTitle":
+        setSignerTitle(value);
+        break;
+      case "paragraph1CustomText":
+        setParagraph1CustomText(value);
+        break;
+      case "paragraph5CustomText":
+        setParagraph5CustomText(value);
+        break;
+      case "eligibilityRequirements":
+        setEligibilityRequirements(value);
+        break;
+      case "responsibilities":
+        setResponsibilities(value);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleUpdateEligibilityItem = (index: number, value: string) => {
+    setEligibilityRequirements((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
+
+  const handleUpdateResponsibilityItem = (index: number, value: string) => {
+    setResponsibilities((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
 
   const handleSubmitForReview = async (shouldClose = false) => {
     setIsSubmitting(true);
@@ -110,6 +194,8 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         tierLevel: tierLevel.trim(),
         isSpecialty: !!isSpecialty,
         termDuration: termDuration.trim(),
+        paragraph1CustomText: paragraph1CustomText.trim(),
+        paragraph5CustomText: paragraph5CustomText.trim(),
         memoDate: memoDate.trim(),
         eligibilityRequirements: eligibilityRequirements.filter(r => r.trim() !== ""),
         responsibilities: responsibilities.filter(r => r.trim() !== ""),
@@ -218,6 +304,8 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         tierLevel: tierLevel.trim(),
         isSpecialty: !!isSpecialty,
         termDuration: termDuration.trim(),
+        paragraph1CustomText: paragraph1CustomText.trim(),
+        paragraph5CustomText: paragraph5CustomText.trim(),
         memoDate: memoDate.trim(),
         eligibilityRequirements: eligibilityRequirements.filter(r => r.trim() !== ""),
         responsibilities: responsibilities.filter(r => r.trim() !== ""),
@@ -289,6 +377,8 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       slots: Number(slots) || 1,
       tierLevel,
       termDuration,
+      paragraph1CustomText,
+      paragraph5CustomText,
       pocRankName,
       pocEmail,
       closeDeadlineDate,
@@ -316,7 +406,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Announce Vacancy</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white">Announce Vacancy</h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreviewTarget({
+                      field: "fullMemo",
+                      label: "Complete Memorandum",
+                      section: "Full Document",
+                    })
+                  }
+                  className="text-xs bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold px-2.5 py-1 rounded-md transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Preview the complete official Army memorandum"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Preview Memo</span>
+                </button>
+              </div>
               <p className="text-xs text-slate-400">Position: {duty.jobTitle} ({duty.category})</p>
             </div>
           </div>
@@ -447,7 +554,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                     <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Position Title [Position Title]</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Position Title [Position Title]</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "positionTitle",
+                                  label: "Position Title",
+                                  section: "Subject & Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={positionTitle}
@@ -460,7 +584,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Shop Name [shop name]</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Shop Name [shop name]</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "shopName",
+                                  label: "Shop Name",
+                                  section: "Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={shopName}
@@ -472,7 +613,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Memo Date (Top Right of Memo)</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Memo Date (Top Right of Memo)</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "memoDate",
+                                  label: "Memo Date",
+                                  section: "Header Date",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={memoDate}
@@ -486,12 +644,29 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
-                            <span>Open Slots / Vacancies</span>
-                            <span className="text-[10px] text-emerald-400/90 font-mono font-medium">
-                              {slots === 1 ? "1 Position" : `${slots} Positions Available`}
-                            </span>
-                          </label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">
+                              <span>Open Slots / Vacancies</span>
+                              <span className="ml-2 text-[10px] text-emerald-400/90 font-mono font-medium">
+                                ({slots === 1 ? "1 Position" : `${slots} Positions Available`})
+                              </span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "slots",
+                                  label: "Open Slots / Vacancies",
+                                  section: "Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
@@ -529,7 +704,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Unit Tier Level</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Unit Tier Level</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "tierLevel",
+                                  label: "Unit Tier Level",
+                                  section: "Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <select
                             value={tierLevel}
                             onChange={(e) => {
@@ -552,7 +744,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Position Type</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Position Type</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "isSpecialty",
+                                  label: "Position Type",
+                                  section: "Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <div className="flex items-center h-10">
                             <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
                               <input
@@ -578,7 +787,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-slate-400 mb-1">Term Duration [x to x years]</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-slate-400">Term Duration [x to x years]</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "termDuration",
+                                  label: "Term Duration",
+                                  section: "Paragraph 1",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={termDuration}
@@ -613,30 +839,113 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                       <div className="space-y-3">
                         {eligibilityRequirements.map((req, index) => {
                           const eligibilityPlaceholders = [
-                            "Rank Requirement (e.g., SSG to SFC)",
+                            "Rank Requirement (Select rank from dropdown or enter custom text)",
                             "Requirement 2 (e.g., Experience with Microsoft Office, training systems, and administrative tasking.)",
                             "Requirement 3 (e.g., Ability to coordinate effectively across multiple shops and elements.)",
                             "Requirement 4 (e.g., Demonstrated proficiency in physical readiness and standard administrative taskings.)"
                           ];
+
+                          if (index === 0) {
+                            // Requirement a: Rank Requirement Dropdown
+                            const isStandardRank = RANK_REQUIREMENT_OPTIONS.includes(req as any);
+                            return (
+                              <div key={index} className="space-y-1.5 p-3 bg-slate-950/60 border border-slate-800/80 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                    <span>Requirement a (Rank Requirement)</span>
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setPreviewTarget({
+                                        field: "rankRequirement",
+                                        label: "Rank Requirement (Requirement a)",
+                                        section: "Paragraph 2 (Eligibility)",
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                                    title="Preview how rank requirement appears on the memo and edit wording"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>Preview on Memo</span>
+                                  </button>
+                                </div>
+                                <select
+                                  value={isStandardRank ? req : "custom"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val !== "custom") {
+                                      const updated = [...eligibilityRequirements];
+                                      updated[0] = val;
+                                      setEligibilityRequirements(updated);
+                                    }
+                                  }}
+                                  className="w-full text-sm bg-slate-900 border border-slate-750 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                                >
+                                  {RANK_REQUIREMENT_OPTIONS.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                  {!isStandardRank && req && (
+                                    <option value="custom">Custom: {req}</option>
+                                  )}
+                                </select>
+                                {!isStandardRank && req && (
+                                  <div className="mt-1">
+                                    <input
+                                      type="text"
+                                      value={req}
+                                      onChange={(e) => {
+                                        const updated = [...eligibilityRequirements];
+                                        updated[0] = e.target.value;
+                                        setEligibilityRequirements(updated);
+                                      }}
+                                      className="w-full text-xs bg-slate-900 border border-slate-750 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
                           return (
                             <div key={index} className="space-y-1">
                               <div className="flex items-center justify-between">
                                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                  {index === 0 ? "Requirement a (Rank requirement)" : `Requirement ${String.fromCharCode(97 + index)}`}
+                                  {`Requirement ${String.fromCharCode(97 + index)}`}
                                 </label>
-                                {eligibilityRequirements.length > 2 && (
+                                <div className="flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const updated = [...eligibilityRequirements];
-                                      updated.splice(index, 1);
-                                      setEligibilityRequirements(updated);
-                                    }}
-                                    className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline transition-colors"
+                                    onClick={() =>
+                                      setPreviewTarget({
+                                        field: "eligibility",
+                                        index,
+                                        label: `Requirement ${String.fromCharCode(97 + index)}`,
+                                        section: "Paragraph 2 (Eligibility)",
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                                    title="Preview on memo and edit wording"
                                   >
-                                    Delete
+                                    <Eye className="w-3 h-3" />
+                                    <span>Preview</span>
                                   </button>
-                                )}
+                                  {eligibilityRequirements.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...eligibilityRequirements];
+                                        updated.splice(index, 1);
+                                        setEligibilityRequirements(updated);
+                                      }}
+                                      className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <textarea
                                 value={req}
@@ -699,19 +1008,37 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                   Responsibility {String.fromCharCode(97 + index)}
                                 </label>
-                                {responsibilities.length > 2 && (
+                                <div className="flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const updated = [...responsibilities];
-                                      updated.splice(index, 1);
-                                      setResponsibilities(updated);
-                                    }}
-                                    className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline transition-colors"
+                                    onClick={() =>
+                                      setPreviewTarget({
+                                        field: "responsibility",
+                                        index,
+                                        label: `Responsibility ${String.fromCharCode(97 + index)}`,
+                                        section: "Paragraph 3 (Responsibilities)",
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-2 py-0.5 transition cursor-pointer"
+                                    title="Preview on memo and edit wording"
                                   >
-                                    Delete
+                                    <Eye className="w-3 h-3" />
+                                    <span>Preview</span>
                                   </button>
-                                )}
+                                  {responsibilities.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [...responsibilities];
+                                        updated.splice(index, 1);
+                                        setResponsibilities(updated);
+                                      }}
+                                      className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline transition-colors"
+                                    >
+                                      Delete
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <textarea
                                 value={resp}
@@ -759,7 +1086,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                         <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Submit Questions & Packet To:</span>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-semibold text-slate-400 mb-1">POC Rank & Name [Rank Name]</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-semibold text-slate-400">POC Rank & Name [Rank Name]</label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "pocRankName",
+                                    label: "POC Rank & Name",
+                                    section: "Paragraph 5 (Submission & POC)",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                                title="Preview on memo and edit wording"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                            </div>
                             <input
                               type="text"
                               value={pocRankName}
@@ -769,7 +1113,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-semibold text-slate-400 mb-1">POC Email [email address]</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-semibold text-slate-400">POC Email [email address]</label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "pocEmail",
+                                    label: "POC Email Address",
+                                    section: "Paragraph 5 (Submission & POC)",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                                title="Preview on memo and edit wording"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                            </div>
                             <input
                               type="text"
                               value={pocEmail}
@@ -780,7 +1141,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-slate-400 mb-1">Closing Deadline Date [enter date]</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] font-semibold text-slate-400">Closing Deadline Date [enter date]</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "closeDeadlineDate",
+                                  label: "Closing Deadline Date",
+                                  section: "Paragraph 5 (Submission & POC)",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={closeDeadlineDate}
@@ -795,7 +1173,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                         <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Authorized Signer/NCOIC Block:</span>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-semibold text-slate-400 mb-1">NCOIC Name (ALL CAPS) [SHOP NCOIC's NAME...]</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-semibold text-slate-400">NCOIC Name (ALL CAPS) [SHOP NCOIC's NAME...]</label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "signerNameCaps",
+                                    label: "Signer Name (ALL CAPS)",
+                                    section: "Signature Block",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                                title="Preview on memo and edit wording"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                            </div>
                             <input
                               type="text"
                               value={signerNameCaps}
@@ -805,7 +1200,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-semibold text-slate-400 mb-1">NCOIC Rank [RANK, USA]</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-semibold text-slate-400">NCOIC Rank [RANK, USA]</label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "signerRank",
+                                    label: "Signer Rank",
+                                    section: "Signature Block",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                                title="Preview on memo and edit wording"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                            </div>
                             <input
                               type="text"
                               value={signerRank}
@@ -816,7 +1228,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                           </div>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-slate-400 mb-1">NCOIC Title [Title, i.e., TUSAB Training NCOIC]</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] font-semibold text-slate-400">NCOIC Title [Title, i.e., TUSAB Training NCOIC]</label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewTarget({
+                                  field: "signerTitle",
+                                  label: "Signer Title",
+                                  section: "Signature Block",
+                                })
+                              }
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              title="Preview on memo and edit wording"
+                            >
+                              <Eye className="w-2.5 h-2.5" />
+                              <span>Preview</span>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             value={signerTitle}
@@ -1005,6 +1434,34 @@ ${pocEmail || "[POC email]"}`;
           </div>
         </div>
       )}
+      {/* Memo Pop-out Preview & Manual Wording Editor */}
+      <VacancyMemoPreviewModal
+        isOpen={previewTarget !== null}
+        onClose={() => setPreviewTarget(null)}
+        target={previewTarget}
+        memoData={{
+          positionTitle,
+          shopName,
+          memoDate,
+          slots,
+          tierLevel,
+          isSpecialty,
+          termDuration,
+          paragraph1CustomText,
+          paragraph5CustomText,
+          eligibilityRequirements,
+          responsibilities,
+          pocRankName,
+          pocEmail,
+          closeDeadlineDate,
+          signerNameCaps,
+          signerRank,
+          signerTitle,
+        }}
+        onUpdateField={handleUpdateField}
+        onUpdateEligibilityItem={handleUpdateEligibilityItem}
+        onUpdateResponsibilityItem={handleUpdateResponsibilityItem}
+      />
     </div>
   );
 }

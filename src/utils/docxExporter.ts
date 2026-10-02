@@ -66,18 +66,32 @@ const generateSpacerXml = () => {
 };
 
 const getEligibilityTextXml = (index: number, text: string, paraId: string) => {
-  const cleanText = escapeXml(text);
+  let cleanText = (text || "").trim();
+  const letter = String.fromCharCode(97 + index); // a, b, c...
+  const prefixRegex = new RegExp(`^${letter}\\.\\s*`, 'i');
+  cleanText = cleanText.replace(prefixRegex, '');
+  cleanText = escapeXml(cleanText);
+
   if (index === 0) {
+    const lower = cleanText.toLowerCase().trim();
+    if (lower.startsWith("candidates must be") || lower.startsWith("this position is") || lower.startsWith("open to all soldiers to apply")) {
+      return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  ${cleanText}</w:t></w:r></w:p>`;
+    }
+    if (lower === "open to all soldiers") {
+      return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be open to all Soldiers to apply for this position.</w:t></w:r></w:p>`;
+    }
     return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be ${cleanText} to apply for this position.</w:t></w:r></w:p>`;
   } else {
-    const letter = String.fromCharCode(97 + index); // b, c, d...
     return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
   }
 };
 
 const getResponsibilityTextXml = (index: number, text: string, paraId: string) => {
-  const cleanText = escapeXml(text);
+  let cleanText = (text || "").trim();
   const letter = String.fromCharCode(97 + index); // a, b, c...
+  const prefixRegex = new RegExp(`^${letter}\\.\\s*`, 'i');
+  cleanText = cleanText.replace(prefixRegex, '');
+  cleanText = escapeXml(cleanText);
   return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
 };
 
