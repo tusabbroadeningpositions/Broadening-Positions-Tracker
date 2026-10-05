@@ -248,7 +248,7 @@ export const exportVacancyBriefingSlide = (
       ctx.fillStyle = isCmdAppointed ? "#60a5fa" : isSpecialty ? "#c084fc" : "#e2e8f0";
       ctx.font = "bold 10px 'Arial', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(isCmdAppointed ? "CMD APPT" : isSpecialty ? "SPECIALTY" : tierText, 0, 4);
+      ctx.fillText(tierText, 0, 4);
       ctx.restore();
 
       // 4C. # of Positions (Simple numeral representation)
