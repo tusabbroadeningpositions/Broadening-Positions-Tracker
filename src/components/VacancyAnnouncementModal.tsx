@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Duty } from "../types";
 import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip, ArrowRight, Eye, Edit3 } from "lucide-react";
-import { downloadVacancyMemo } from "../utils/docxExporter";
+import { downloadVacancyMemo, formatNumberToWord, spellOutTermYears } from "../utils/docxExporter";
 import { getShareableDraftUrl } from "../utils/shareUtils";
 import VacancyMemoPreviewModal, { PreviewTarget, RANK_REQUIREMENT_OPTIONS } from "./VacancyMemoPreviewModal";
 
@@ -57,16 +57,20 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [slots, setSlots] = useState<number>(() => (initialDraft?.slots ? Number(initialDraft.slots) : 1));
   const [tierLevel, setTierLevel] = useState(() => initialDraft?.tierLevel || (duty.tierLevel !== null && duty.tierLevel !== undefined ? String(duty.tierLevel) : "1"));
   const [isSpecialty, setIsSpecialty] = useState(initialDraft ? !!initialDraft.isSpecialty : (duty.specialized || false));
+  const [isCommandAppointed, setIsCommandAppointed] = useState<boolean>(() => {
+    if (initialDraft?.isCommandAppointed !== undefined) return !!initialDraft.isCommandAppointed;
+    return false;
+  });
   const [termDuration, setTermDuration] = useState(() => {
-    if (initialDraft?.termDuration) return initialDraft.termDuration;
+    if (initialDraft?.termDuration) return spellOutTermYears(initialDraft.termDuration);
     if (duty.specialized) {
       return "This is a specialty position with no term limits";
     }
-    if (duty.tierLevel === 1) return "2 to 5 years";
-    if (duty.tierLevel === 2) return "2 to 6 years";
-    if (duty.tierLevel === 3) return "3 to 7 years";
-    if (duty.tierLevel === 4) return "3 to 7 years";
-    return "2 to 5 years";
+    if (duty.tierLevel === 1) return "two to five years";
+    if (duty.tierLevel === 2) return "two to six years";
+    if (duty.tierLevel === 3) return "three to seven years";
+    if (duty.tierLevel === 4) return "three to seven years";
+    return "two to five years";
   });
   const [memoDate, setMemoDate] = useState(() => initialDraft?.memoDate || formatDateToMilitary(new Date()));
 
@@ -119,6 +123,9 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         break;
       case "isSpecialty":
         setIsSpecialty(!!value);
+        break;
+      case "isCommandAppointed":
+        setIsCommandAppointed(!!value);
         break;
       case "termDuration":
         setTermDuration(value);
@@ -193,6 +200,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         slots: Number(slots) || 1,
         tierLevel: tierLevel.trim(),
         isSpecialty: !!isSpecialty,
+        isCommandAppointed: !!isCommandAppointed,
         termDuration: termDuration.trim(),
         paragraph1CustomText: paragraph1CustomText.trim(),
         paragraph5CustomText: paragraph5CustomText.trim(),
@@ -260,11 +268,11 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
     if (duty.specialized) {
       defaultTerm = "This is a specialty position with no term limits";
     } else {
-      if (duty.tierLevel === 1) defaultTerm = "2 to 5 years";
-      else if (duty.tierLevel === 2) defaultTerm = "2 to 6 years";
-      else if (duty.tierLevel === 3) defaultTerm = "3 to 7 years";
-      else if (duty.tierLevel === 4) defaultTerm = "3 to 7 years";
-      else defaultTerm = "2 to 5 years";
+      if (duty.tierLevel === 1) defaultTerm = "two to five years";
+      else if (duty.tierLevel === 2) defaultTerm = "two to six years";
+      else if (duty.tierLevel === 3) defaultTerm = "three to seven years";
+      else if (duty.tierLevel === 4) defaultTerm = "three to seven years";
+      else defaultTerm = "two to five years";
     }
     const defaultMemoDate = formatDateToMilitary(new Date());
     const defaultCloseDate = getThirtyDaysAfter(memoDate || defaultMemoDate);
@@ -276,6 +284,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       (Number(slots) || 1) !== (initialDraft?.slots ? Number(initialDraft.slots) : 1) ||
       normalize(tierLevel) !== normalize(initialDraft?.tierLevel || (duty.tierLevel !== null && duty.tierLevel !== undefined ? String(duty.tierLevel) : "1")) ||
       (!!isSpecialty) !== (initialDraft ? !!isSpecialty : (duty.specialized || false)) ||
+      (!!isCommandAppointed) !== (initialDraft ? !!initialDraft.isCommandAppointed : false) ||
       normalize(termDuration) !== normalize(initialDraft?.termDuration || defaultTerm) ||
       normalize(memoDate) !== normalize(initialDraft?.memoDate || defaultMemoDate) ||
       normalize(pocRankName) !== normalize(initialDraft?.pocRankName || "") ||
@@ -305,6 +314,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         slots: Number(slots) || 1,
         tierLevel: tierLevel.trim(),
         isSpecialty: !!isSpecialty,
+        isCommandAppointed: !!isCommandAppointed,
         termDuration: termDuration.trim(),
         paragraph1CustomText: paragraph1CustomText.trim(),
         paragraph5CustomText: paragraph5CustomText.trim(),
@@ -379,6 +389,8 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       slots: Number(slots) || 1,
       tierLevel,
       termDuration,
+      isSpecialty,
+      isCommandAppointed,
       paragraph1CustomText,
       paragraph5CustomText,
       pocRankName,
@@ -584,6 +596,18 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             }}
                             className="w-full text-sm bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="isCommandAppointed"
+                              checked={isCommandAppointed}
+                              onChange={(e) => setIsCommandAppointed(e.target.checked)}
+                              className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-emerald-500 focus:ring-emerald-500/20 cursor-pointer accent-emerald-500"
+                            />
+                            <label htmlFor="isCommandAppointed" className="text-xs text-slate-300 font-medium cursor-pointer select-none">
+                              Command appointed position
+                            </label>
+                          </div>
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
@@ -730,18 +754,18 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                               const val = e.target.value;
                               setTierLevel(val);
                               if (!isSpecialty) {
-                                if (val === "1") setTermDuration("2 to 5 years");
-                                else if (val === "2") setTermDuration("2 to 6 years");
-                                else if (val === "3") setTermDuration("3 to 7 years");
-                                else if (val === "4") setTermDuration("3 to 7 years");
+                                if (val === "1") setTermDuration("two to five years");
+                                else if (val === "2") setTermDuration("two to six years");
+                                else if (val === "3") setTermDuration("three to seven years");
+                                else if (val === "4") setTermDuration("three to seven years");
                               }
                             }}
                             className="w-full text-sm bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           >
-                            <option value="1">Tier 1 (2-5 yrs)</option>
-                            <option value="2">Tier 2 (2-6 yrs)</option>
-                            <option value="3">Tier 3 (3-7 yrs)</option>
-                            <option value="4">Tier 4 (3-7 yrs)</option>
+                            <option value="1">Tier 1 (two to five years)</option>
+                            <option value="2">Tier 2 (two to six years)</option>
+                            <option value="3">Tier 3 (three to seven years)</option>
+                            <option value="4">Tier 4 (three to seven years)</option>
                             <option value="N/A">N/A</option>
                           </select>
                         </div>
@@ -775,11 +799,11 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                                   if (checked) {
                                     setTermDuration("This is a specialty position with no term limits");
                                   } else {
-                                    if (tierLevel === "1") setTermDuration("2 to 5 years");
-                                    else if (tierLevel === "2") setTermDuration("2 to 6 years");
-                                    else if (tierLevel === "3") setTermDuration("3 to 7 years");
-                                    else if (tierLevel === "4") setTermDuration("3 to 7 years");
-                                    else setTermDuration("2 to 5 years");
+                                    if (tierLevel === "1") setTermDuration("two to five years");
+                                    else if (tierLevel === "2") setTermDuration("two to six years");
+                                    else if (tierLevel === "3") setTermDuration("three to seven years");
+                                    else if (tierLevel === "4") setTermDuration("three to seven years");
+                                    else setTermDuration("two to five years");
                                   }
                                 }}
                                 className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500"
@@ -811,7 +835,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             type="text"
                             value={termDuration}
                             onChange={(e) => setTermDuration(e.target.value)}
-                            placeholder="e.g., 2 to 5 years"
+                            placeholder="e.g., two to five years"
                             className="w-full text-sm bg-slate-950 border border-slate-800 rounded px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
@@ -1448,6 +1472,7 @@ ${pocEmail || "[POC email]"}`;
           slots,
           tierLevel,
           isSpecialty,
+          isCommandAppointed,
           termDuration,
           paragraph1CustomText,
           paragraph5CustomText,

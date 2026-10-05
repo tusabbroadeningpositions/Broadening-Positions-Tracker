@@ -310,6 +310,11 @@ Broadening Positions Team`;
                             {draft.slots} Slots
                           </span>
                         )}
+                        {draft.isCommandAppointed && (
+                          <span className="px-1.5 py-0.5 bg-blue-950/80 text-blue-300 border border-blue-800/60 rounded text-[9px] font-bold">
+                            Command Appointed
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
                         <Calendar className="w-3.5 h-3.5 text-slate-500" />

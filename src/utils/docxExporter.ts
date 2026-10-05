@@ -19,6 +19,31 @@ export interface ApplicationMemoData {
   elementLeaderTitle?: string; // e.g. "Element Leader"
 }
 
+export const formatNumberToWord = (num: number): string => {
+  const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+  if (num >= 0 && num <= 9) {
+    return words[num];
+  }
+  return String(num);
+};
+
+export const spellOutTermYears = (term: string): string => {
+  if (!term) return "";
+  const words: Record<string, string> = {
+    "0": "zero",
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine"
+  };
+  return term.replace(/\b([0-9])\b/g, (match, digit) => words[digit] || match);
+};
+
 const formatDateToMilitary = (d: Date) => {
   const day = d.getDate();
   const month = d.toLocaleDateString("en-US", { month: "long" });
@@ -111,7 +136,7 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     if (filename.endsWith(".xml")) {
       let xmlText = zip.files[filename].asText();
       
-      // 0. Handle Paragraph 1 (custom text from preview editor or plural slots or default)
+      // 0. Handle Paragraph 1 (custom text from preview editor or plural slots or command-appointed or default)
       const p1Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5DD"[^>]*>[\\s\\S]*?<\\/w:p>');
       if (draft.paragraph1CustomText && draft.paragraph1CustomText.trim() !== "") {
         let p1Clean = draft.paragraph1CustomText.trim();
@@ -121,9 +146,15 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
         xmlText = xmlText.replace(p1Regex, customP1Xml);
       } else {
         const slots = draft.slots && Number(draft.slots) > 1 ? Number(draft.slots) : 1;
+        const slotsWord = slots > 1 ? formatNumberToWord(slots) : "a";
+        const posWord = draft.isCommandAppointed ? "command-appointed" : "Unit";
+        
         if (slots > 1) {
-          const pluralP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking ${slots} highly motivated NCOs to fill the positions of [BP title]. These are Tier [x] Unit positions with a term of [x to x years].</w:t></w:r></w:p>`;
+          const pluralP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking ${slotsWord} highly motivated NCOs to fill the positions of [BP title]. These are Tier [x] ${posWord} positions with a term of [x to x years].</w:t></w:r></w:p>`;
           xmlText = xmlText.replace(p1Regex, pluralP1Xml);
+        } else if (draft.isCommandAppointed) {
+          const commandP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking a highly motivated NCO to fill the position of [BP title]. This is a Tier [x] command-appointed position with a term of [x to x years].</w:t></w:r></w:p>`;
+          xmlText = xmlText.replace(p1Regex, commandP1Xml);
         }
       }
 
@@ -241,7 +272,7 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     "shop name": (draft.shopName || "").trim(),
     "BP title": (draft.bpTitle || draft.positionTitle || "").trim(),
     "x": (draft.tierLevel || "").trim(),
-    "x to x years": (draft.termDuration || "").trim(),
+    "x to x years": spellOutTermYears((draft.termDuration || "").trim()),
     "Rank Name": (draft.pocRankName || "").trim() || "SFC Jane Doe",
     "email address": (draft.pocEmail || "").trim() || "jane.doe.mil@army.mil",
     "enter date": (draft.closeDeadlineDate || "").trim() || getThirtyDaysAfter(memoDate),

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, Edit3, Eye, FileText, RotateCcw } from "lucide-react";
+import { formatNumberToWord, spellOutTermYears } from "../utils/docxExporter";
 
 export type PreviewTarget =
   | { field: "positionTitle"; label: string; section: string }
@@ -41,6 +42,7 @@ interface VacancyMemoPreviewModalProps {
     slots: number;
     tierLevel: string;
     isSpecialty: boolean;
+    isCommandAppointed?: boolean;
     termDuration: string;
     paragraph1CustomText?: string;
     paragraph5CustomText?: string;
@@ -97,7 +99,10 @@ export default function VacancyMemoPreviewModal({
     const posTitle = memoData.positionTitle || "[Position Title]";
     const shop = memoData.shopName || "[Shop Name]";
     const tier = memoData.tierLevel || "1";
-    const term = memoData.termDuration || "2 to 5 years";
+    const defaultTerm = tier === "1" ? "two to five years" : tier === "2" ? "two to six years" : "three to seven years";
+    const term = spellOutTermYears(memoData.termDuration || defaultTerm);
+    const posTypeWord = memoData.isCommandAppointed ? "command-appointed" : "Unit";
+    const slotsWord = slots > 1 ? formatNumberToWord(slots) : "a";
     const memoDate = memoData.memoDate || "[Memo Date]";
     const pocName = memoData.pocRankName || "[POC Rank & Name]";
     const pocEmail = memoData.pocEmail || "[poc.email@army.mil]";
@@ -125,11 +130,18 @@ export default function VacancyMemoPreviewModal({
       if (memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== "") {
         return memoData.paragraph1CustomText.trim();
       }
+      if (memoData.isSpecialty) {
+        return `1.  The ${shop} is seeking ${
+          slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
+        } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+          slots > 1 ? "These are" : "This is a"
+        } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`;
+      }
       return `1.  The ${shop} is seeking ${
-        slots > 1 ? `${slots} highly motivated NCOs` : "a highly motivated NCO"
+        slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
       } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
         slots > 1 ? "These are" : "This is a"
-      } Tier ${tier} Unit position${slots > 1 ? "s" : ""} with a term of ${term}.`;
+      } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`;
     }
 
     if (t.field === "eligibility") {
@@ -166,11 +178,21 @@ export default function VacancyMemoPreviewModal({
     }
 
     if (t.field === "fullMemo") {
-      return `MEMORANDUM FOR RECORD\nSUBJECT: Broadening Position Vacancy Announcement - ${posTitle}\n\n1.  The ${shop} is seeking ${
-        slots > 1 ? `${slots} highly motivated NCOs` : "a highly motivated NCO"
-      } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
-        slots > 1 ? "These are" : "This is a"
-      } Tier ${tier} Unit position${slots > 1 ? "s" : ""} with a term of ${term}.\n\n2.  Eligibility requirements:\na.  ${formatRankSentence(
+      const p1Text = memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== ""
+        ? memoData.paragraph1CustomText.trim()
+        : memoData.isSpecialty
+          ? `1.  The ${shop} is seeking ${
+              slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
+            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+              slots > 1 ? "These are" : "This is a"
+            } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`
+          : `1.  The ${shop} is seeking ${
+              slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
+            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+              slots > 1 ? "These are" : "This is a"
+            } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`;
+
+      return `MEMORANDUM FOR RECORD\nSUBJECT: Broadening Position Vacancy Announcement - ${posTitle}\n\n${p1Text}\n\n2.  Eligibility requirements:\na.  ${formatRankSentence(
         memoData.eligibilityRequirements?.[0] || "SSG and above"
       )}\n\n3.  Duties and responsibilities:\na.  ${
         memoData.responsibilities?.[0] || "[Responsibility description]"
@@ -227,7 +249,10 @@ export default function VacancyMemoPreviewModal({
     const posTitle = memoData.positionTitle || "[Position Title]";
     const shop = memoData.shopName || "[Shop Name]";
     const tier = memoData.tierLevel || "1";
-    const term = memoData.termDuration || "2 to 5 years";
+    const defaultTerm = tier === "1" ? "two to five years" : tier === "2" ? "two to six years" : "three to seven years";
+    const term = spellOutTermYears(memoData.termDuration || defaultTerm);
+    const posTypeWord = memoData.isCommandAppointed ? "command-appointed" : "Unit";
+    const slotsWord = slots > 1 ? formatNumberToWord(slots) : "a";
     const pocName = memoData.pocRankName || "[POC Rank & Name]";
     const pocEmail = memoData.pocEmail || "[poc.email@army.mil]";
     const closeDate = memoData.closeDeadlineDate || "[Close Date]";
@@ -240,13 +265,23 @@ export default function VacancyMemoPreviewModal({
       target.field === "isSpecialty" ||
       target.field === "termDuration"
     ) {
-      setEditedParagraph(
-        `1.  The ${shop} is seeking ${
-          slots > 1 ? `${slots} highly motivated NCOs` : "a highly motivated NCO"
-        } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
-          slots > 1 ? "These are" : "This is a"
-        } Tier ${tier} Unit position${slots > 1 ? "s" : ""} with a term of ${term}.`
-      );
+      if (memoData.isSpecialty) {
+        setEditedParagraph(
+          `1.  The ${shop} is seeking ${
+            slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
+          } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+            slots > 1 ? "These are" : "This is a"
+          } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`
+        );
+      } else {
+        setEditedParagraph(
+          `1.  The ${shop} is seeking ${
+            slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
+          } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+            slots > 1 ? "These are" : "This is a"
+          } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`
+        );
+      }
     } else if (target.field === "pocRankName" || target.field === "pocEmail" || target.field === "closeDeadlineDate") {
       setEditedParagraph(`5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.`);
     } else if (target.field === "rankRequirement") {

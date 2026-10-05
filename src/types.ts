@@ -77,7 +77,10 @@ export interface VacancyDraft {
   slots?: number;
   tierLevel?: string;
   isSpecialty?: boolean;
+  isCommandAppointed?: boolean;
   termDuration?: string;
+  paragraph1CustomText?: string;
+  paragraph5CustomText?: string;
   memoDate?: string;
   eligibilityRequirements?: string[];
   responsibilities?: string[];
