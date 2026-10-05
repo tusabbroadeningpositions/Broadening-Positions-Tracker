@@ -283,7 +283,9 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       normalize(closeDeadlineDate) !== normalize(initialDraft?.closeDeadlineDate || defaultCloseDate) ||
       normalize(signerNameCaps) !== normalize(initialDraft?.signerNameCaps || "") ||
       normalize(signerRank) !== normalize(initialDraft?.signerRank || "") ||
-      normalize(signerTitle) !== normalize(initialDraft?.signerTitle || "");
+      normalize(signerTitle) !== normalize(initialDraft?.signerTitle || "") ||
+      normalize(paragraph1CustomText) !== normalize(initialDraft?.paragraph1CustomText || "") ||
+      normalize(paragraph5CustomText) !== normalize(initialDraft?.paragraph5CustomText || "");
 
     return isBaseModified || isEligibilityModified || isResponsibilitiesModified;
   };

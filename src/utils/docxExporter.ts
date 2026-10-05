@@ -74,13 +74,14 @@ const getEligibilityTextXml = (index: number, text: string, paraId: string) => {
 
   if (index === 0) {
     const lower = cleanText.toLowerCase().trim();
-    if (lower.startsWith("candidates must be") || lower.startsWith("this position is") || lower.startsWith("open to all soldiers to apply")) {
-      return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  ${cleanText}</w:t></w:r></w:p>`;
-    }
     if (lower === "open to all soldiers") {
       return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be open to all Soldiers to apply for this position.</w:t></w:r></w:p>`;
     }
-    return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be ${cleanText} to apply for this position.</w:t></w:r></w:p>`;
+    if (["ssg", "sfc", "msg", "sgm", "ssg and above", "sfc and above", "msg and above"].includes(lower)) {
+      return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be ${cleanText} to apply for this position.</w:t></w:r></w:p>`;
+    }
+    // Custom user-edited sentence or full phrasing
+    return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  ${cleanText}</w:t></w:r></w:p>`;
   } else {
     return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
   }
@@ -110,12 +111,20 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     if (filename.endsWith(".xml")) {
       let xmlText = zip.files[filename].asText();
       
-      // 0. Handle multiple slots in Paragraph 1 if slots > 1
-      const slots = draft.slots && Number(draft.slots) > 1 ? Number(draft.slots) : 1;
-      if (slots > 1) {
-        const p1Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5DD"[^>]*>[\\s\\S]*?<\\/w:p>');
-        const pluralP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking ${slots} highly motivated NCOs to fill the positions of [BP title]. These are Tier [x] Unit positions with a term of [x to x years].</w:t></w:r></w:p>`;
-        xmlText = xmlText.replace(p1Regex, pluralP1Xml);
+      // 0. Handle Paragraph 1 (custom text from preview editor or plural slots or default)
+      const p1Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5DD"[^>]*>[\\s\\S]*?<\\/w:p>');
+      if (draft.paragraph1CustomText && draft.paragraph1CustomText.trim() !== "") {
+        let p1Clean = draft.paragraph1CustomText.trim();
+        p1Clean = p1Clean.replace(/^1\.\s*/i, "");
+        const escapedP1 = escapeXml(p1Clean);
+        const customP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  ${escapedP1}</w:t></w:r></w:p>`;
+        xmlText = xmlText.replace(p1Regex, customP1Xml);
+      } else {
+        const slots = draft.slots && Number(draft.slots) > 1 ? Number(draft.slots) : 1;
+        if (slots > 1) {
+          const pluralP1Xml = `<w:p w14:paraId="2B9AC5DD" w14:textId="2D5CD86A" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">1.  The [shop name] is seeking ${slots} highly motivated NCOs to fill the positions of [BP title]. These are Tier [x] Unit positions with a term of [x to x years].</w:t></w:r></w:p>`;
+          xmlText = xmlText.replace(p1Regex, pluralP1Xml);
+        }
       }
 
       // 1. Replace the date (4 December 2024 -> [memoDate])
@@ -205,6 +214,16 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
         const cleanP4Xml = `<w:p w14:paraId="2B9AC5F9" w14:textId="57168C55" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature.</w:t></w:r></w:p>`;
         xmlText = xmlText.replace(p4Regex, cleanP4Xml);
       }
+
+      // 5. Handle Paragraph 5 (custom text from preview editor or default with template placeholders)
+      if (draft.paragraph5CustomText && draft.paragraph5CustomText.trim() !== "") {
+        const p5Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5FB"[^>]*>[\\s\\S]*?<\\/w:p>');
+        let p5Clean = draft.paragraph5CustomText.trim();
+        p5Clean = p5Clean.replace(/^5\.\s*/i, "");
+        const escapedP5 = escapeXml(p5Clean);
+        const customP5Xml = `<w:p w14:paraId="2B9AC5FB" w14:textId="57168C56" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">5.  ${escapedP5}</w:t></w:r></w:p>`;
+        xmlText = xmlText.replace(p5Regex, customP5Xml);
+      }
       
       zip.file(filename, xmlText);
     }
@@ -220,7 +239,7 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
   const data = {
     "Position Title": (draft.positionTitle || "").trim(),
     "shop name": (draft.shopName || "").trim(),
-    "BP title": (draft.bpTitle || "").trim(),
+    "BP title": (draft.bpTitle || draft.positionTitle || "").trim(),
     "x": (draft.tierLevel || "").trim(),
     "x to x years": (draft.termDuration || "").trim(),
     "Rank Name": (draft.pocRankName || "").trim() || "SFC Jane Doe",
