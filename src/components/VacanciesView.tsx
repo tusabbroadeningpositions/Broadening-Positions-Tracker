@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { downloadVacancyMemo } from "../utils/docxExporter";
 import { ApplicationMemoModal } from "./ApplicationMemoModal";
 import { updateVacancyDraftAdminNotes, updateVacancyDraftStatus, deleteVacancyDraft } from "../data/dutiesStore";
+import { exportVacancyBriefingSlide } from "../utils/slideExporter";
 import { 
   FileText, 
   Download, 
@@ -36,6 +37,20 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
   const [localSearch, setLocalSearch] = useState("");
   const [shopFilter, setShopFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "name-asc" | "name-desc" | "deadline-asc">("date-desc");
+  const [selectedVacancyIds, setSelectedVacancyIds] = useState<string[]>([]);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isExportMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".relative")) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, [isExportMenuOpen]);
 
   // Admin Notes Modal state
   const [activeNotesVacancy, setActiveNotesVacancy] = useState<any | null>(null);
@@ -325,7 +340,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
           </div>
 
           {/* Sorting Dropdown */}
-          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-md px-2.5 py-1.5 mr-1">
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <select
               value={sortBy}
@@ -339,6 +354,95 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
               <option value="deadline-asc" className="bg-slate-900">Deadline (Soonest)</option>
             </select>
           </div>
+
+          {/* Admin Briefing Slide Export Feature */}
+          {isAdmin && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-md text-[11px] font-bold transition cursor-pointer shadow-md"
+                title="Export current vacancies as a high-definition PowerPoint slide image (.png)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Slide</span>
+                <span className="text-[10px] bg-slate-950/20 text-slate-950 px-1 py-0.2 rounded font-mono font-bold">{selectedVacancyIds.length}</span>
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-64 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl py-1 z-40">
+                  <div className="px-3 py-1.5 border-b border-slate-800 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Briefing Slide Options
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      exportVacancyBriefingSlide(approvedVacancies, "All Vacancies");
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-[11px] text-slate-200 hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <div className="flex-1">
+                      <div className="font-bold">Export All Active ({approvedVacancies.length})</div>
+                      <p className="text-[9px] text-slate-400">Generates slide with all active vacancies</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const unreached = approvedVacancies.filter(v => {
+                        if (!v.closeDeadlineDate) return true;
+                        try {
+                          const d = new Date(v.closeDeadlineDate);
+                          d.setHours(23, 59, 59, 999);
+                          return new Date().getTime() <= d.getTime();
+                        } catch {
+                          return true;
+                        }
+                      });
+                      exportVacancyBriefingSlide(unreached, "Open Vacancies");
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-[11px] text-slate-200 hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <div className="flex-1">
+                      <div className="font-bold">Export Open Vacancies</div>
+                      <p className="text-[9px] text-slate-400">Excludes those past deadline</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={selectedVacancyIds.length === 0}
+                    onClick={() => {
+                      if (selectedVacancyIds.length === 0) {
+                        alert("Please select at least one vacancy from the table using the checkboxes first.");
+                        return;
+                      }
+                      const selected = approvedVacancies.filter(v => selectedVacancyIds.includes(v.id));
+                      exportVacancyBriefingSlide(selected, "Selected Vacancies");
+                      setIsExportMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-[11px] transition flex items-center gap-2 ${
+                      selectedVacancyIds.length === 0 
+                        ? "text-slate-500 opacity-50 cursor-not-allowed" 
+                        : "text-slate-200 hover:bg-slate-800 cursor-pointer"
+                    }`}
+                  >
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <div className="flex-1">
+                      <div className="font-bold">Export Selected ({selectedVacancyIds.length})</div>
+                      <p className="text-[9px] text-slate-400">Generates slide of selected rows only</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -361,6 +465,32 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
             <table className="w-full text-left border-collapse" id="vacancies_table">
               <thead>
                 <tr className="bg-slate-950 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-850">
+                  {isAdmin && (
+                    <th className="px-3 py-3.5 text-center w-12">
+                      <input
+                        type="checkbox"
+                        checked={
+                          processedVacancies.length > 0 &&
+                          processedVacancies.every((v) => selectedVacancyIds.includes(v.id))
+                        }
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          if (checked) {
+                            setSelectedVacancyIds((prev) => {
+                              const combined = new Set([...prev, ...processedVacancies.map((v) => v.id)]);
+                              return Array.from(combined);
+                            });
+                          } else {
+                            setSelectedVacancyIds((prev) =>
+                              prev.filter((id) => !processedVacancies.some((v) => v.id === id))
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+                        title="Select all filtered"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3.5">Position Title</th>
                   <th className="px-4 py-3.5">Submission Deadline</th>
                   <th className="px-4 py-3.5">Rank Requirement</th>
@@ -382,6 +512,23 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       key={vacancy.id}
                       className="hover:bg-slate-950/40 transition-colors duration-150"
                     >
+                      {isAdmin && (
+                        <td className="px-3 py-4 text-center whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedVacancyIds.includes(vacancy.id)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedVacancyIds((prev) =>
+                                checked
+                                  ? [...prev, vacancy.id]
+                                  : prev.filter((id) => id !== vacancy.id)
+                              );
+                            }}
+                            className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+                          />
+                        </td>
+                      )}
                       {/* Position Title & Category */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2 flex-wrap">
