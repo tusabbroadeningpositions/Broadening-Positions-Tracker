@@ -199,6 +199,37 @@ const getResponsibilityTextXml = (index: number, text: string, paraId: string) =
   return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
 };
 
+export const cleanHeaderXml = (xml: string): string => {
+  const pRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
+  const pMatches = Array.from(xml.matchAll(pRegex)).map((m) => m[0]);
+
+  let firstTextIdx = -1;
+  let lastTextIdx = -1;
+  pMatches.forEach((p, idx) => {
+    if (p.includes("<w:t")) {
+      if (firstTextIdx === -1) firstTextIdx = idx;
+      lastTextIdx = idx;
+    }
+  });
+
+  if (firstTextIdx === -1) return xml;
+
+  const emptyPara = `<w:p><w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr></w:p>`;
+  
+  const resultParagraphs: string[] = [emptyPara];
+
+  for (let i = firstTextIdx; i <= lastTextIdx; i++) {
+    resultParagraphs.push(pMatches[i]);
+  }
+
+  resultParagraphs.push(emptyPara);
+  resultParagraphs.push(emptyPara);
+
+  const headerOpenMatch = xml.match(/^[\s\S]*?<w:hdr\b[^>]*>/);
+  const headerOpen = headerOpenMatch ? headerOpenMatch[0] : "<w:hdr>";
+  return headerOpen + resultParagraphs.join("") + "</w:hdr>";
+};
+
 export const generateVacancyMemoBlob = (draft: any): Blob => {
   const binaryString = atob(ARMY_VACANCY_TEMPLATE_BASE64);
   const len = binaryString.length;
@@ -213,6 +244,15 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
   Object.keys(zip.files).forEach((filename) => {
     if (filename.endsWith(".xml")) {
       let xmlText = zip.files[filename].asText();
+      
+      // Clean second page headers to eliminate excess top margin while leaving exactly 1 space line before body text
+      if (filename.includes("header1") || filename.includes("header2")) {
+        xmlText = cleanHeaderXml(xmlText);
+      }
+
+      if (filename.includes("document.xml")) {
+        xmlText = xmlText.replace(/w:top="35pt"/g, 'w:top="72pt"');
+      }
       
       // 0. Handle Paragraph 1 (custom text from preview editor or plural slots or command-appointed or default)
       const p1Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5DD"[^>]*>[\\s\\S]*?<\\/w:p>');
@@ -508,11 +548,13 @@ export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
       zip.file("_rels/.rels", mainRels);
     }
 
-    if (zip.files["word/_rels/document.xml.rels"]) {
-      let docRels = zip.files["word/_rels/document.xml.rels"].asText();
-      docRels = docRels.replace(/<Relationship [^>]*Target="\.\.\/customXml\/item\d\.xml"[^>]*\/>/g, "");
-      zip.file("word/_rels/document.xml.rels", docRels);
-    }
+    Object.keys(zip.files).forEach((filename) => {
+      if (filename.includes("header1") || filename.includes("header2")) {
+        let headerText = zip.files[filename].asText();
+        headerText = cleanHeaderXml(headerText);
+        zip.file(filename, headerText);
+      }
+    });
 
     let docXml = zip.files["word/document.xml"].asText();
 
