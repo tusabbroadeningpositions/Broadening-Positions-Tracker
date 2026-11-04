@@ -82,6 +82,61 @@ const escapeXml = (unsafe: string) => {
   });
 };
 
+/**
+ * Army Writing Standard (AR 25-50): Ensures two spaces after terminal sentence punctuation (. ? !)
+ * while preserving standard military abbreviations and prefixes.
+ */
+export const ensureTwoSpacesAfterSentence = (text: string): string => {
+  if (!text) return "";
+
+  let formatted = text;
+
+  // Protect common military and standard abbreviations
+  const protectedAbbrs: [RegExp, string][] = [
+    [/\bU\.S\./gi, "___US_ABBR___"],
+    [/\be\.g\./gi, "___EG_ABBR___"],
+    [/\bi\.e\./gi, "___IE_ABBR___"],
+    [/\bMr\./gi, "___MR_ABBR___"],
+    [/\bMs\./gi, "___MS_ABBR___"],
+    [/\bDr\./gi, "___DR_ABBR___"],
+    [/\bNo\./gi, "___NO_ABBR___"],
+    [/\bvs\./gi, "___VS_ABBR___"],
+    [/\bNLT\./gi, "___NLT_ABBR___"],
+    [/\bCo\./gi, "___CO_ABBR___"],
+    [/\bInc\./gi, "___INC_ABBR___"],
+    [/\bDept\./gi, "___DEPT_ABBR___"],
+    [/\bPara\./gi, "___PARA_ABBR___"],
+    [/\b(?<=\b[A-Z])\.(?=[A-Z]\b)/g, "___DOT_INITIAL___"],
+  ];
+
+  for (const [pattern, placeholder] of protectedAbbrs) {
+    formatted = formatted.replace(pattern, placeholder);
+  }
+
+  // Replace terminal punctuation (. ? !) followed by a single space and a capital letter, digit, or quote with 2 spaces
+  formatted = formatted.replace(/([.?!])\s(?=[A-Z0-9"])/g, "$1  ");
+
+  // Restore protected abbreviations
+  for (const [pattern, placeholder] of protectedAbbrs) {
+    if (placeholder === "___US_ABBR___") formatted = formatted.replace(/___US_ABBR___/g, "U.S.");
+    else if (placeholder === "___EG_ABBR___") formatted = formatted.replace(/___EG_ABBR___/g, "e.g.");
+    else if (placeholder === "___IE_ABBR___") formatted = formatted.replace(/___IE_ABBR___/g, "i.e.");
+    else if (placeholder === "___MR_ABBR___") formatted = formatted.replace(/___MR_ABBR___/g, "Mr.");
+    else if (placeholder === "___MS_ABBR___") formatted = formatted.replace(/___MS_ABBR___/g, "Ms.");
+    else if (placeholder === "___DR_ABBR___") formatted = formatted.replace(/___DR_ABBR___/g, "Dr.");
+    else if (placeholder === "___NO_ABBR___") formatted = formatted.replace(/___NO_ABBR___/g, "No.");
+    else if (placeholder === "___VS_ABBR___") formatted = formatted.replace(/___VS_ABBR___/g, "vs.");
+    else if (placeholder === "___NLT_ABBR___") formatted = formatted.replace(/___NLT_ABBR___/g, "NLT.");
+    else if (placeholder === "___CO_ABBR___") formatted = formatted.replace(/___CO_ABBR___/g, "Co.");
+    else if (placeholder === "___INC_ABBR___") formatted = formatted.replace(/___INC_ABBR___/g, "Inc.");
+    else if (placeholder === "___DEPT_ABBR___") formatted = formatted.replace(/___DEPT_ABBR___/g, "Dept.");
+    else if (placeholder === "___PARA_ABBR___") formatted = formatted.replace(/___PARA_ABBR___/g, "Para.");
+    else if (placeholder === "___DOT_INITIAL___") formatted = formatted.replace(/___DOT_INITIAL___/g, ".");
+  }
+
+  return formatted;
+};
+
 const generateHexId = () => {
   return Math.floor(Math.random() * 0xFFFFFFFF).toString(16).toUpperCase().padStart(8, "0");
 };
@@ -90,8 +145,24 @@ const generateSpacerXml = () => {
   return `<w:p w14:paraId="${generateHexId()}" w14:textId="77777777" w:rsidR="00A77B3E" w:rsidRDefault="00A77B3E"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr></w:p>`;
 };
 
+const getSubparagraphDepthLevel = (itemText: string): number => {
+  if (!itemText) return 0;
+  const trimmed = itemText.trim();
+  if (/^\s*(?:[i|v|x]+\.|\([i|v|x]+\)|[i|v|x]+\))\s+/i.test(trimmed)) return 1;
+  if (/^\s*(?:\(\d+\)|\d+\)|\([a-z]\))\s+/i.test(trimmed)) return 2;
+  return 0;
+};
+
 const getEligibilityTextXml = (index: number, text: string, paraId: string) => {
-  let cleanText = (text || "").trim();
+  let cleanText = ensureTwoSpacesAfterSentence((text || "").trim());
+  const depth = getSubparagraphDepthLevel(cleanText);
+
+  if (depth > 0 || /^\s*(?:[a-z]\.|\([a-z]\)|[i|v|x]+\.|\([i|v|x]+\)|\(\d+\))\s+/i.test(cleanText)) {
+    const escaped = escapeXml(cleanText);
+    const indXml = depth === 2 ? `<w:ind w:left="1440" w:firstLine="0"/>` : depth === 1 ? `<w:ind w:left="720" w:firstLine="0"/>` : `<w:ind w:firstLine="18pt"/>`;
+    return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/>${indXml}<w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${escaped}</w:t></w:r></w:p>`;
+  }
+
   const letter = String.fromCharCode(97 + index); // a, b, c...
   const prefixRegex = new RegExp(`^${letter}\\.\\s*`, 'i');
   cleanText = cleanText.replace(prefixRegex, '');
@@ -105,7 +176,6 @@ const getEligibilityTextXml = (index: number, text: string, paraId: string) => {
     if (["ssg", "sfc", "msg", "sgm", "ssg and above", "sfc and above", "msg and above"].includes(lower)) {
       return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  Candidates must be ${cleanText} to apply for this position.</w:t></w:r></w:p>`;
     }
-    // Custom user-edited sentence or full phrasing
     return `<w:p w14:paraId="${paraId}" w14:textId="1D502163" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">a.  ${cleanText}</w:t></w:r></w:p>`;
   } else {
     return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
@@ -113,7 +183,15 @@ const getEligibilityTextXml = (index: number, text: string, paraId: string) => {
 };
 
 const getResponsibilityTextXml = (index: number, text: string, paraId: string) => {
-  let cleanText = (text || "").trim();
+  let cleanText = ensureTwoSpacesAfterSentence((text || "").trim());
+  const depth = getSubparagraphDepthLevel(cleanText);
+
+  if (depth > 0 || /^\s*(?:[a-z]\.|\([a-z]\)|[i|v|x]+\.|\([i|v|x]+\)|\(\d+\))\s+/i.test(cleanText)) {
+    const escaped = escapeXml(cleanText);
+    const indXml = depth === 2 ? `<w:ind w:left="1440" w:firstLine="0"/>` : depth === 1 ? `<w:ind w:left="720" w:firstLine="0"/>` : `<w:ind w:firstLine="18pt"/>`;
+    return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/>${indXml}<w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${escaped}</w:t></w:r></w:p>`;
+  }
+
   const letter = String.fromCharCode(97 + index); // a, b, c...
   const prefixRegex = new RegExp(`^${letter}\\.\\s*`, 'i');
   cleanText = cleanText.replace(prefixRegex, '');
@@ -292,18 +370,24 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
 
 export const downloadVacancyMemo = async (draft: any) => {
   try {
-    const out = generateVacancyMemoBlob(draft);
     const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
-    const filename = `Vacancy_Announcement_${sanitizedTitle}.docx`;
+    const filename = draft?.customFile?.fileName || `Vacancy_Announcement_${sanitizedTitle}.docx`;
 
-    // 1. Convert to base64 to pass to the new tab
-    const reader = new FileReader();
-    const base64Promise = new Promise<string>((resolve) => {
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(out);
-    });
-    const base64DataUrl = await base64Promise;
-    const base64Content = base64DataUrl.split(',')[1];
+    let base64Content = "";
+
+    if (draft?.customFile?.fileData) {
+      const dataUrl = draft.customFile.fileData;
+      base64Content = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+    } else {
+      const out = generateVacancyMemoBlob(draft);
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(out);
+      });
+      const base64DataUrl = await base64Promise;
+      base64Content = base64DataUrl.split(',')[1];
+    }
 
     // 2. Open a new tab
     const newTab = window.open("", "_blank");

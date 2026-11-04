@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, Edit3, Eye, FileText, RotateCcw } from "lucide-react";
-import { formatNumberToWord, spellOutTermYears } from "../utils/docxExporter";
+import { formatNumberToWord, spellOutTermYears, ensureTwoSpacesAfterSentence } from "../utils/docxExporter";
 
 export type PreviewTarget =
   | { field: "positionTitle"; label: string; section: string }
@@ -128,25 +128,25 @@ export default function VacancyMemoPreviewModal({
       t.field === "termDuration"
     ) {
       if (memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== "") {
-        return memoData.paragraph1CustomText.trim();
+        return ensureTwoSpacesAfterSentence(memoData.paragraph1CustomText.trim());
       }
       if (memoData.isSpecialty) {
-        return `1.  The ${shop} is seeking ${
+        return ensureTwoSpacesAfterSentence(`1.  The ${shop} is seeking ${
           slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
-        } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+        } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}.  ${
           slots > 1 ? "These are" : "This is a"
-        } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`;
+        } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`);
       }
-      return `1.  The ${shop} is seeking ${
+      return ensureTwoSpacesAfterSentence(`1.  The ${shop} is seeking ${
         slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
-      } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+      } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}.  ${
         slots > 1 ? "These are" : "This is a"
-      } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`;
+      } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`);
     }
 
     if (t.field === "eligibility") {
       const letter = String.fromCharCode(97 + t.index);
-      const reqText = (memoData.eligibilityRequirements?.[t.index] || `[Eligibility Requirement ${letter}]`).trim();
+      const reqText = ensureTwoSpacesAfterSentence((memoData.eligibilityRequirements?.[t.index] || `[Eligibility Requirement ${letter}]`).trim());
       if (new RegExp(`^${letter}\\.\\s*`, "i").test(reqText)) {
         return reqText;
       }
@@ -155,7 +155,7 @@ export default function VacancyMemoPreviewModal({
 
     if (t.field === "responsibility") {
       const letter = String.fromCharCode(97 + t.index);
-      const respText = (memoData.responsibilities?.[t.index] || `[Responsibility Description ${letter}]`).trim();
+      const respText = ensureTwoSpacesAfterSentence((memoData.responsibilities?.[t.index] || `[Responsibility Description ${letter}]`).trim());
       if (new RegExp(`^${letter}\\.\\s*`, "i").test(respText)) {
         return respText;
       }
@@ -164,9 +164,9 @@ export default function VacancyMemoPreviewModal({
 
     if (t.field === "pocRankName" || t.field === "pocEmail" || t.field === "closeDeadlineDate") {
       if (memoData.paragraph5CustomText && memoData.paragraph5CustomText.trim() !== "") {
-        return memoData.paragraph5CustomText.trim();
+        return ensureTwoSpacesAfterSentence(memoData.paragraph5CustomText.trim());
       }
-      return `5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.`;
+      return ensureTwoSpacesAfterSentence(`5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.`);
     }
 
     if (t.field === "signerNameCaps" || t.field === "signerRank" || t.field === "signerTitle") {
@@ -179,24 +179,43 @@ export default function VacancyMemoPreviewModal({
 
     if (t.field === "fullMemo") {
       const p1Text = memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== ""
-        ? memoData.paragraph1CustomText.trim()
+        ? ensureTwoSpacesAfterSentence(memoData.paragraph1CustomText.trim())
         : memoData.isSpecialty
           ? `1.  The ${shop} is seeking ${
               slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
-            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}.  ${
               slots > 1 ? "These are" : "This is a"
             } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`
           : `1.  The ${shop} is seeking ${
               slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
-            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
+            } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}.  ${
               slots > 1 ? "These are" : "This is a"
             } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`;
 
-      return `MEMORANDUM FOR RECORD\nSUBJECT: Broadening Position Vacancy Announcement - ${posTitle}\n\n${p1Text}\n\n2.  Eligibility requirements:\na.  ${formatRankSentence(
-        memoData.eligibilityRequirements?.[0] || "SSG and above"
-      )}\n\n3.  Duties and responsibilities:\na.  ${
-        memoData.responsibilities?.[0] || "[Responsibility description]"
-      }\n\n4.  To apply for this position, please submit a one-page memorandum...\n\n5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.\n\n${signerName}\n${signerRank}\n${signerTitle}`;
+      const eligibilityBlock = (memoData.eligibilityRequirements || ["SSG and above"])
+        .map((req, idx) => {
+          const formattedReq = ensureTwoSpacesAfterSentence(req);
+          if (idx === 0) return `a.  ${formatRankSentence(formattedReq)}`;
+          const letter = String.fromCharCode(97 + idx);
+          if (/^\s*(?:[a-z]\.|\([a-z]\)|[i|v|x]+\.|\([i|v|x]+\)|\(\d+\))\s+/i.test(formattedReq)) {
+            return `    ${formattedReq}`;
+          }
+          return `${letter}.  ${formattedReq}`;
+        })
+        .join("\n");
+
+      const responsibilitiesBlock = (memoData.responsibilities || ["[Responsibility description]"])
+        .map((resp, idx) => {
+          const formattedResp = ensureTwoSpacesAfterSentence(resp);
+          const letter = String.fromCharCode(97 + idx);
+          if (/^\s*(?:[a-z]\.|\([a-z]\)|[i|v|x]+\.|\([i|v|x]+\)|\(\d+\))\s+/i.test(formattedResp)) {
+            return `    ${formattedResp}`;
+          }
+          return `${letter}.  ${formattedResp}`;
+        })
+        .join("\n");
+
+      return `MEMORANDUM FOR RECORD\nSUBJECT: Broadening Position Vacancy Announcement - ${posTitle}\n\n${p1Text}\n\n2.  Eligibility requirements:\n${eligibilityBlock}\n\n3.  Duties and responsibilities:\n${responsibilitiesBlock}\n\n4.  To apply for this position, please submit a one-page memorandum...\n\n5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.\n\n${signerName}\n${signerRank}\n${signerTitle}`;
     }
 
     return "";

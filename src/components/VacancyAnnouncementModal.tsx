@@ -4,6 +4,7 @@ import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail
 import { downloadVacancyMemo, formatNumberToWord, spellOutTermYears } from "../utils/docxExporter";
 import { getShareableDraftUrl } from "../utils/shareUtils";
 import VacancyMemoPreviewModal, { PreviewTarget, RANK_REQUIREMENT_OPTIONS } from "./VacancyMemoPreviewModal";
+import { parseCustomVacancyDocx, getSubparagraphDepthLevel } from "../utils/docxCustomParser";
 
 interface VacancyAnnouncementModalProps {
   duty: Duty;
@@ -49,6 +50,10 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id || null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+
+  // Custom File state & parser loading state
+  const [customFile, setCustomFile] = useState<any>(initialDraft?.customFile || null);
+  const [isParsingDoc, setIsParsingDoc] = useState(false);
 
   // 1. Basic Memo Info states
   const [positionTitle, setPositionTitle] = useState(initialDraft?.positionTitle || duty.jobTitle || "");
@@ -184,6 +189,67 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
     });
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".docx")) {
+      setStatusMessage({
+        type: "error",
+        text: "Please upload a valid Microsoft Word document (.docx).",
+      });
+      return;
+    }
+
+    setIsParsingDoc(true);
+    setStatusMessage(null);
+
+    try {
+      const parsed = await parseCustomVacancyDocx(file);
+      setCustomFile(parsed.customFile);
+
+      if (parsed.positionTitle) {
+        setPositionTitle(parsed.positionTitle);
+        setBpTitle(parsed.positionTitle);
+      }
+      if (parsed.shopName) setShopName(parsed.shopName);
+      if (parsed.slots) setSlots(parsed.slots);
+      if (parsed.tierLevel) setTierLevel(parsed.tierLevel);
+      if (parsed.isSpecialty !== undefined) setIsSpecialty(parsed.isSpecialty);
+      if (parsed.isCommandAppointed !== undefined) setIsCommandAppointed(parsed.isCommandAppointed);
+      if (parsed.termDuration) setTermDuration(parsed.termDuration);
+      if (parsed.memoDate) setMemoDate(parsed.memoDate);
+      if (parsed.paragraph1CustomText) setParagraph1CustomText(parsed.paragraph1CustomText);
+      if (parsed.paragraph5CustomText) setParagraph5CustomText(parsed.paragraph5CustomText);
+
+      if (parsed.eligibilityRequirements && parsed.eligibilityRequirements.length > 0) {
+        setEligibilityRequirements(parsed.eligibilityRequirements);
+      }
+      if (parsed.responsibilities && parsed.responsibilities.length > 0) {
+        setResponsibilities(parsed.responsibilities);
+      }
+      if (parsed.pocRankName) setPocRankName(parsed.pocRankName);
+      if (parsed.pocEmail) setPocEmail(parsed.pocEmail);
+      if (parsed.closeDeadlineDate) setCloseDeadlineDate(parsed.closeDeadlineDate);
+      if (parsed.signerNameCaps) setSignerNameCaps(parsed.signerNameCaps);
+      if (parsed.signerRank) setSignerRank(parsed.signerRank);
+      if (parsed.signerTitle) setSignerTitle(parsed.signerTitle);
+
+      setStatusMessage({
+        type: "success",
+        text: `Successfully imported "${file.name}"! All fields and multi-level subparagraphs have been extracted for review.`,
+      });
+    } catch (err) {
+      console.error("Error parsing custom docx:", err);
+      setStatusMessage({
+        type: "error",
+        text: "Failed to parse Word document. You can still manually fill in the fields.",
+      });
+    } finally {
+      setIsParsingDoc(false);
+    }
+  };
+
   const handleSubmitForReview = async (shouldClose = false) => {
     setIsSubmitting(true);
     setStatusMessage(null);
@@ -213,6 +279,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         signerNameCaps: signerNameCaps.trim(),
         signerRank: signerRank.trim(),
         signerTitle: signerTitle.trim(),
+        customFile: customFile || null,
         status: "pending",
         createdAt: initialDraft?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -327,6 +394,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         signerNameCaps: signerNameCaps.trim(),
         signerRank: signerRank.trim(),
         signerTitle: signerTitle.trim(),
+        customFile: customFile || null,
         status: initialDraft?.status || "pending",
         createdAt: initialDraft?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -499,6 +567,57 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         {/* Content Body */}
         <div className="w-full p-6 space-y-5 overflow-y-auto max-h-[calc(85vh-120px)]">
           
+          {/* Custom Announcement (.docx) File Upload Banner */}
+          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-lg shrink-0">
+                <Paperclip className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">Custom Word Announcement (.docx)</span>
+                  {customFile && (
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-mono font-bold">
+                      File Attached
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {customFile
+                    ? `Attached: ${customFile.fileName} — All fields and multi-level subparagraphs extracted.`
+                    : "Upload a custom Word document (.docx). Extracts position, shop, rank, POC, and multi-level subparagraphs."}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 rounded text-xs font-bold transition cursor-pointer shadow-xs">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isParsingDoc ? "Parsing Document..." : customFile ? "Replace Word File" : "Upload Custom Announcement"}</span>
+                <input
+                  type="file"
+                  accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isParsingDoc}
+                />
+              </label>
+              {customFile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomFile(null);
+                    setStatusMessage({ type: "info", text: "Custom file attachment removed. Reverted to standard form template." });
+                  }}
+                  className="px-2.5 py-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 rounded text-xs transition cursor-pointer"
+                  title="Remove custom file attachment"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Tailored Army Template Form with Categorized Tabs */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -506,7 +625,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                 Official Army Memo Form
               </h4>
               <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-mono">
-                Template: Active
+                {customFile ? "Custom Upload Active" : "Template Active"}
               </span>
             </div>
             
@@ -935,12 +1054,27 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             );
                           }
 
+                          const depth = getSubparagraphDepthLevel(req);
+                          const indentClass = depth === 2 ? "ml-8 pl-3 border-l-2 border-amber-500/40 bg-amber-950/10 p-2 rounded-r" : depth === 1 ? "ml-4 pl-3 border-l-2 border-indigo-500/40 bg-indigo-950/10 p-2 rounded-r" : "";
+
                           return (
-                            <div key={index} className="space-y-1">
+                            <div key={index} className={`space-y-1 ${indentClass}`}>
                               <div className="flex items-center justify-between">
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                  {`Requirement ${String.fromCharCode(97 + index)}`}
-                                </label>
+                                <div className="flex items-center gap-2">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    {`Requirement ${String.fromCharCode(97 + index)}`}
+                                  </label>
+                                  {depth === 1 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded font-mono font-bold">
+                                      Sub-paragraph (Level 2: i., ii.)
+                                    </span>
+                                  )}
+                                  {depth === 2 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded font-mono font-bold">
+                                      Sub-paragraph (Level 3: (1), (2))
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   <button
                                     type="button"
@@ -989,14 +1123,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                         })}
                       </div>
 
-                      <div className="flex justify-between items-center pt-4 border-t border-slate-800/60 mt-4">
-                        <button
-                          type="button"
-                          onClick={() => setEligibilityRequirements([...eligibilityRequirements, ""])}
-                          className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
-                        >
-                          + Add Requirement
-                        </button>
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800/60 mt-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEligibilityRequirements([...eligibilityRequirements, ""])}
+                            className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded hover:bg-emerald-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            + Add Item (a., b.)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEligibilityRequirements([...eligibilityRequirements, "i. "])}
+                            className="text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-1.5 rounded hover:bg-indigo-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Add a level-2 subparagraph (i., ii., iii., etc.)"
+                          >
+                            + Add Sub-paragraph (i., ii., iii.)
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setActiveTab("duties")}
