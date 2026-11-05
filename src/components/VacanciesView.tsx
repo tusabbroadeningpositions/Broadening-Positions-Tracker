@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { downloadVacancyMemo } from "../utils/docxExporter";
+import { downloadVacancyMemo, extractRankRequirement } from "../utils/docxExporter";
 import { ApplicationMemoModal } from "./ApplicationMemoModal";
 import { updateVacancyDraftAdminNotes, updateVacancyDraftStatus, deleteVacancyDraft } from "../data/dutiesStore";
 import { exportVacancyBriefingSlide } from "../utils/slideExporter";
@@ -504,7 +504,8 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
               </thead>
               <tbody className="divide-y divide-slate-850 text-xs">
                 {processedVacancies.map((vacancy) => {
-                  const rankReq = vacancy.eligibilityRequirements?.[0] || "N/A";
+                  const fullEligibility = vacancy.eligibilityRequirements?.[0] || "N/A";
+                  const rankReq = extractRankRequirement(vacancy.eligibilityRequirements);
                   const hasNotes = !!(vacancy.adminNotes && vacancy.adminNotes.trim());
 
                   return (
@@ -559,7 +560,7 @@ export default function VacanciesView({ drafts, isAdmin, searchQuery }: Vacancie
                       <td className="px-4 py-4 max-w-[180px]">
                         <div className="flex items-center gap-1.5 text-slate-300">
                           <Award className="w-3.5 h-3.5 shrink-0 text-slate-500" />
-                          <span className="truncate block" title={rankReq}>{rankReq}</span>
+                          <span className="truncate block" title={fullEligibility}>{rankReq}</span>
                         </div>
                       </td>
 

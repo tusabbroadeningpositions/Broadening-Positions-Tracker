@@ -1,4 +1,4 @@
-import { formatNumberToWord } from "./docxExporter";
+import { formatNumberToWord, extractRankRequirement } from "./docxExporter";
 
 export interface SlideVacancyData {
   id: string;
@@ -259,7 +259,7 @@ export const exportVacancyBriefingSlide = (
       ctx.fillText(String(slotsNum), colPositions.slots + colWidths.slots / 2, yRow + rowHeight / 2 + 5);
 
       // 4D. Rank Requirement Column
-      const rankReq = vac.eligibilityRequirements?.[0] || "N/A";
+      const rankReq = extractRankRequirement(vac.eligibilityRequirements);
       ctx.textAlign = "left";
       ctx.fillStyle = "#cbd5e1"; // Soft gray-blue text for legibility
       ctx.font = `${rowCount > 8 ? "12px" : "13.5px"} 'Arial', sans-serif`;

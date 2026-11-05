@@ -19,6 +19,74 @@ export interface ApplicationMemoData {
   elementLeaderTitle?: string; // e.g. "Element Leader"
 }
 
+export const extractRankRequirement = (reqs?: string[] | string): string => {
+  if (!reqs) return "N/A";
+  
+  const reqList = Array.isArray(reqs) ? reqs : [reqs];
+  if (reqList.length === 0) return "N/A";
+
+  const rankRegex = /\b(PVT|PV2|PFC|CPL|SPC|SGT|SSG|SFC|MSG|1SG|SGM|CSM|SMA|WO1|CW2|CW3|CW4|CW5|2LT|1LT|CPT|MAJ|LTC|COL|BG|MG|LTG|GEN)\b/gi;
+
+  // Find the first line that actually contains a rank
+  let targetText = reqList.find((r) => r && rankRegex.test(r)) || reqList[0];
+  if (!targetText || targetText.trim() === "") return "N/A";
+
+  let clean = targetText.trim();
+  // Strip leading paragraph markers like "a. ", "1. ", "(a) ", "Eligibility:"
+  clean = clean.replace(/^\s*(?:[a-z]\.|\d+\.|\([a-z0-9]+\)|eligibility:?)\s*/i, "").trim();
+
+  // 1. Single Rank + "and above" or "or above" (e.g. "SSG and above", "SFC or above")
+  const singlePlusMatch = clean.match(
+    /\b(PVT|PV2|PFC|CPL|SPC|SGT|SSG|SFC|MSG|1SG|SGM|CSM|WO1|CW2|CW3|CW4|CW5|2LT|1LT|CPT|MAJ|LTC|COL)\s+(?:and|or)\s+above\b/i
+  );
+  if (singlePlusMatch && singlePlusMatch[0]) {
+    return singlePlusMatch[0].trim();
+  }
+
+  // 2. Rank Range / Multi-Rank match (e.g. "SSG to SFC", "SSG - SFC", "SSG through MSG", "SSG, SFC, or MSG")
+  const multiRankMatch = clean.match(
+    /\b(PVT|PV2|PFC|CPL|SPC|SGT|SSG|SFC|MSG|1SG|SGM|CSM|WO1|CW2|CW3|CW4|CW5|2LT|1LT|CPT|MAJ|LTC|COL)\s*(?:-|to|through|or|,|and)\s*(?:and\s+|or\s+)?(PVT|PV2|PFC|CPL|SPC|SGT|SSG|SFC|MSG|1SG|SGM|CSM|WO1|CW2|CW3|CW4|CW5|2LT|1LT|CPT|MAJ|LTC|COL)\b(?:\s*(?:or|and|,)\s*(?:PVT|PV2|PFC|CPL|SPC|SGT|SSG|SFC|MSG|1SG|SGM|CSM|WO1|CW2|CW3|CW4|CW5|2LT|1LT|CPT|MAJ|LTC|COL)\b)?/i
+  );
+  if (multiRankMatch && multiRankMatch[0]) {
+    let result = multiRankMatch[0].trim();
+    // Clean any trailing separator/preposition if captured
+    result = result.replace(/\s+(?:to|or|and|through|-|,)\s*$/i, "").trim();
+    return result;
+  }
+
+  // 3. Extract all individual ranks present in text
+  const matches = clean.match(rankRegex);
+  if (matches && matches.length > 0) {
+    const uniqueRanks = Array.from(new Set(matches.map((m) => m.toUpperCase())));
+    if (uniqueRanks.length === 1) {
+      if (/and\s+above/i.test(clean)) {
+        return `${uniqueRanks[0]} and above`;
+      }
+      return uniqueRanks[0];
+    }
+    if (uniqueRanks.length === 2) {
+      return `${uniqueRanks[0]} to ${uniqueRanks[1]}`;
+    }
+    return uniqueRanks.join(", ");
+  }
+
+  // 4. Fallback if no military rank acronym found: clean common sentence prefixes
+  let fallback = clean
+    .replace(/^(?:this\s+position\s+is\s+)?(?:open|available)\s+to\s+/i, "")
+    .replace(/^candidates\s+must\s+be\s+/i, "")
+    .replace(/^must\s+be\s+/i, "")
+    .replace(/^must\s+hold\s+/i, "")
+    .replace(/^be\s+a\s+/i, "")
+    .replace(/\s+to\s+apply.*$/i, "")
+    .replace(/\s+for\s+this\s+position.*$/i, "");
+
+  if (fallback.length > 22) {
+    fallback = fallback.substring(0, 20) + "...";
+  }
+
+  return fallback || "N/A";
+};
+
 export const formatNumberToWord = (num: number): string => {
   const words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
   if (num >= 0 && num <= 9) {
