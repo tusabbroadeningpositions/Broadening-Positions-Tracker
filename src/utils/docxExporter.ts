@@ -411,23 +411,16 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
 export const downloadVacancyMemo = async (draft: any) => {
   try {
     const sanitizedTitle = (draft.positionTitle || "Vacancy_Announcement").replace(/[^a-zA-Z0-9]/g, "_");
-    const filename = draft?.customFile?.fileName || `Vacancy_Announcement_${sanitizedTitle}.docx`;
+    const filename = `Vacancy_Announcement_${sanitizedTitle}.docx`;
 
-    let base64Content = "";
-
-    if (draft?.customFile?.fileData) {
-      const dataUrl = draft.customFile.fileData;
-      base64Content = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
-    } else {
-      const out = generateVacancyMemoBlob(draft);
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(out);
-      });
-      const base64DataUrl = await base64Promise;
-      base64Content = base64DataUrl.split(',')[1];
-    }
+    const out = generateVacancyMemoBlob(draft);
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(out);
+    });
+    const base64DataUrl = await base64Promise;
+    const base64Content = base64DataUrl.split(',')[1];
 
     // 2. Open a new tab
     const newTab = window.open("", "_blank");
