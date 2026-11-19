@@ -80,7 +80,9 @@ export interface VacancyDraft {
   isCommandAppointed?: boolean;
   termDuration?: string;
   paragraph1CustomText?: string;
+  paragraph4CustomText?: string;
   paragraph5CustomText?: string;
+  additionalParagraphs?: string[];
   memoDate?: string;
   eligibilityRequirements?: string[];
   responsibilities?: string[];

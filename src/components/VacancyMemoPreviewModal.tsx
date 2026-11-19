@@ -12,6 +12,8 @@ export type PreviewTarget =
   | { field: "rankRequirement"; label: string; section: string }
   | { field: "eligibility"; index: number; label: string; section: string }
   | { field: "responsibility"; index: number; label: string; section: string }
+  | { field: "paragraph4"; label: string; section: string }
+  | { field: "additionalParagraph"; index: number; label: string; section: string }
   | { field: "pocRankName"; label: string; section: string }
   | { field: "pocEmail"; label: string; section: string }
   | { field: "closeDeadlineDate"; label: string; section: string }
@@ -45,7 +47,9 @@ interface VacancyMemoPreviewModalProps {
     isCommandAppointed?: boolean;
     termDuration: string;
     paragraph1CustomText?: string;
+    paragraph4CustomText?: string;
     paragraph5CustomText?: string;
+    additionalParagraphs?: string[];
     eligibilityRequirements: string[];
     responsibilities: string[];
     pocRankName: string;
@@ -162,11 +166,30 @@ export default function VacancyMemoPreviewModal({
       return `${letter}.  ${respText}`;
     }
 
+    if (t.field === "paragraph4") {
+      if (memoData.paragraph4CustomText && memoData.paragraph4CustomText.trim() !== "") {
+        const clean = ensureTwoSpacesAfterSentence(memoData.paragraph4CustomText.trim());
+        return /^4\.\s*/.test(clean) ? clean : `4.  ${clean}`;
+      }
+      return ensureTwoSpacesAfterSentence(
+        "4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature."
+      );
+    }
+
+    if (t.field === "additionalParagraph") {
+      const paraNum = 6 + t.index;
+      const rawExtra = (memoData.additionalParagraphs?.[t.index] || "").trim();
+      const clean = ensureTwoSpacesAfterSentence(rawExtra);
+      if (!clean) return `${paraNum}.  `;
+      return new RegExp(`^${paraNum}\\.\\s*`).test(clean) ? clean : `${paraNum}.  ${clean}`;
+    }
+
     if (t.field === "pocRankName" || t.field === "pocEmail" || t.field === "closeDeadlineDate") {
       if (memoData.paragraph5CustomText && memoData.paragraph5CustomText.trim() !== "") {
-        return ensureTwoSpacesAfterSentence(memoData.paragraph5CustomText.trim());
+        const clean = ensureTwoSpacesAfterSentence(memoData.paragraph5CustomText.trim());
+        return /^5\.\s*/.test(clean) ? clean : `5.  ${clean}`;
       }
-      return ensureTwoSpacesAfterSentence(`5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.`);
+      return ensureTwoSpacesAfterSentence(`5.  Submit any questions and memorandum to ${pocName} at ${pocEmail}.  The deadline for applying is 1700 on ${closeDate}.`);
     }
 
     if (t.field === "signerNameCaps" || t.field === "signerRank" || t.field === "signerTitle") {
@@ -178,7 +201,7 @@ export default function VacancyMemoPreviewModal({
     }
 
     if (t.field === "fullMemo") {
-      const p1Text = memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== ""
+      const p1Raw = memoData.paragraph1CustomText && memoData.paragraph1CustomText.trim() !== ""
         ? ensureTwoSpacesAfterSentence(memoData.paragraph1CustomText.trim())
         : memoData.isSpecialty
           ? `1.  The ${shop} is seeking ${
@@ -191,11 +214,14 @@ export default function VacancyMemoPreviewModal({
             } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}.  ${
               slots > 1 ? "These are" : "This is a"
             } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`;
+      const p1Text = /^1\.\s*/.test(p1Raw) ? p1Raw : `1.  ${p1Raw}`;
 
       const eligibilityBlock = (memoData.eligibilityRequirements || ["SSG and above"])
         .map((req, idx) => {
           const formattedReq = ensureTwoSpacesAfterSentence(req);
-          if (idx === 0) return `a.  ${formatRankSentence(formattedReq)}`;
+          if (idx === 0) {
+            return /^a\.\s*/i.test(formattedReq) ? formattedReq : `a.  ${formatRankSentence(formattedReq)}`;
+          }
           const letter = String.fromCharCode(97 + idx);
           if (/^\s*(?:[a-z]\.|\([a-z]\)|[i|v|x]+\.|\([i|v|x]+\)|\(\d+\))\s+/i.test(formattedReq)) {
             return `    ${formattedReq}`;
@@ -215,7 +241,38 @@ export default function VacancyMemoPreviewModal({
         })
         .join("\n");
 
-      return `MEMORANDUM FOR RECORD\nSUBJECT: Broadening Position Vacancy Announcement - ${posTitle}\n\n${p1Text}\n\n2.  Eligibility requirements:\n${eligibilityBlock}\n\n3.  Duties and responsibilities:\n${responsibilitiesBlock}\n\n4.  To apply for this position, please submit a one-page memorandum...\n\n5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.\n\n${signerName}\n${signerRank}\n${signerTitle}`;
+      const p4Raw = memoData.paragraph4CustomText && memoData.paragraph4CustomText.trim() !== ""
+        ? ensureTwoSpacesAfterSentence(memoData.paragraph4CustomText.trim())
+        : ensureTwoSpacesAfterSentence(
+            "To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature."
+          );
+      const p4Text = /^4\.\s*/.test(p4Raw) ? p4Raw : `4.  ${p4Raw}`;
+
+      const p5Raw = memoData.paragraph5CustomText && memoData.paragraph5CustomText.trim() !== ""
+        ? ensureTwoSpacesAfterSentence(memoData.paragraph5CustomText.trim())
+        : ensureTwoSpacesAfterSentence(`Submit any questions and memorandum to ${pocName} at ${pocEmail}. The deadline for applying is 1700 on ${closeDate}.`);
+      const p5Text = /^5\.\s*/.test(p5Raw) ? p5Raw : `5.  ${p5Raw}`;
+
+      const extraBlocks = (memoData.additionalParagraphs || [])
+        .filter((p) => p && p.trim() !== "")
+        .map((p, idx) => {
+          const paraNum = 6 + idx;
+          const clean = ensureTwoSpacesAfterSentence(p.trim());
+          return new RegExp(`^${paraNum}\\.\\s*`).test(clean) ? clean : `${paraNum}.  ${clean}`;
+        });
+
+      const bodyParagraphs = [
+        `MEMORANDUM FOR RECORD\nSUBJECT:  Vacancy Announcement for ${posTitle}`,
+        p1Text,
+        `2.  Eligibility requirements:\n${eligibilityBlock}`,
+        `3.  Duties and Responsibilities:\n${responsibilitiesBlock}`,
+        p4Text,
+        p5Text,
+        ...extraBlocks,
+        `${signerName}\n${signerRank}\n${signerTitle}`,
+      ];
+
+      return bodyParagraphs.join("\n\n");
     }
 
     return "";
@@ -260,6 +317,16 @@ export default function VacancyMemoPreviewModal({
     ) {
       onUpdateField("paragraph1CustomText", "");
     }
+    if (target.field === "paragraph4") {
+      onUpdateField("paragraph4CustomText", "");
+      setEditedParagraph(
+        ensureTwoSpacesAfterSentence(
+          "4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature."
+        )
+      );
+      return;
+    }
+
     if (target.field === "pocRankName" || target.field === "pocEmail" || target.field === "closeDeadlineDate") {
       onUpdateField("paragraph5CustomText", "");
     }
@@ -286,23 +353,25 @@ export default function VacancyMemoPreviewModal({
     ) {
       if (memoData.isSpecialty) {
         setEditedParagraph(
-          `1.  The ${shop} is seeking ${
+          ensureTwoSpacesAfterSentence(`1.  The ${shop} is seeking ${
             slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
           } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
             slots > 1 ? "These are" : "This is a"
-          } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`
+          } specialty ${posTypeWord} position${slots > 1 ? "s" : ""} with no term limits.`)
         );
       } else {
         setEditedParagraph(
-          `1.  The ${shop} is seeking ${
+          ensureTwoSpacesAfterSentence(`1.  The ${shop} is seeking ${
             slots > 1 ? `${slotsWord} highly motivated NCOs` : "a highly motivated NCO"
           } to fill the position${slots > 1 ? "s" : ""} of ${posTitle}. ${
             slots > 1 ? "These are" : "This is a"
-          } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`
+          } Tier ${tier} ${posTypeWord} position${slots > 1 ? "s" : ""} with a term of ${term}.`)
         );
       }
     } else if (target.field === "pocRankName" || target.field === "pocEmail" || target.field === "closeDeadlineDate") {
-      setEditedParagraph(`5.  Please submit all questions and application packets to ${pocName} at ${pocEmail} NLT ${closeDate}.`);
+      setEditedParagraph(
+        ensureTwoSpacesAfterSentence(`5.  Submit any questions and memorandum to ${pocName} at ${pocEmail}. The deadline for applying is 1700 on ${closeDate}.`)
+      );
     } else if (target.field === "rankRequirement") {
       setSelectedRank("SSG and above");
       setEditedParagraph("a.  Candidates must be SSG and above to apply for this position.");
@@ -342,6 +411,13 @@ export default function VacancyMemoPreviewModal({
       target.field === "termDuration"
     ) {
       onUpdateField("paragraph1CustomText", trimmed);
+    } else if (target.field === "paragraph4") {
+      onUpdateField("paragraph4CustomText", trimmed.replace(/^4\.\s*/i, ""));
+    } else if (target.field === "additionalParagraph") {
+      const paraNum = 6 + target.index;
+      const updated = [...(memoData.additionalParagraphs || [])];
+      updated[target.index] = trimmed.replace(new RegExp(`^${paraNum}\\.\\s*`, "i"), "");
+      onUpdateField("additionalParagraphs", updated);
     } else if (
       target.field === "pocRankName" ||
       target.field === "pocEmail" ||

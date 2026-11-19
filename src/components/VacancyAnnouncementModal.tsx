@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Duty } from "../types";
 import { X, Upload, Download, Copy, Check, FileText, Calendar, User, Phone, Mail, HelpCircle, Layers, Award, Shield, Paperclip, ArrowRight, Eye, Edit3 } from "lucide-react";
 import { downloadVacancyMemo, formatNumberToWord, spellOutTermYears } from "../utils/docxExporter";
@@ -106,7 +106,29 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
   const [signerRank, setSignerRank] = useState(initialDraft?.signerRank || "");
   const [signerTitle, setSignerTitle] = useState(initialDraft?.signerTitle || "");
   const [paragraph1CustomText, setParagraph1CustomText] = useState<string>(initialDraft?.paragraph1CustomText || "");
+  const [paragraph4CustomText, setParagraph4CustomText] = useState<string>(initialDraft?.paragraph4CustomText || "");
   const [paragraph5CustomText, setParagraph5CustomText] = useState<string>(initialDraft?.paragraph5CustomText || "");
+  const [additionalParagraphs, setAdditionalParagraphs] = useState<string[]>(() =>
+    Array.isArray(initialDraft?.additionalParagraphs) ? initialDraft.additionalParagraphs : []
+  );
+
+  // Tracks the last valid POC email synced inside custom paragraphs so form email edits stay synchronized
+  const lastSyncedEmailRef = useRef<string>(initialDraft?.pocEmail || "");
+
+  const syncEmailIntoCustomParagraphs = (newEmail: string) => {
+    const prevEmail = lastSyncedEmailRef.current;
+    const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val.trim());
+    if (prevEmail && isValidEmail(prevEmail) && isValidEmail(newEmail) && prevEmail !== newEmail.trim()) {
+      const nextTrimmed = newEmail.trim();
+      setParagraph5CustomText((prev) => (prev && prev.includes(prevEmail) ? prev.split(prevEmail).join(nextTrimmed) : prev));
+      setAdditionalParagraphs((prevList) =>
+        prevList.map((p) => (p && p.includes(prevEmail) ? p.split(prevEmail).join(nextTrimmed) : p))
+      );
+      lastSyncedEmailRef.current = nextTrimmed;
+    } else if (!prevEmail && isValidEmail(newEmail)) {
+      lastSyncedEmailRef.current = newEmail.trim();
+    }
+  };
 
   const handleUpdateField = (fieldKey: string, value: any) => {
     switch (fieldKey) {
@@ -143,6 +165,7 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         break;
       case "pocEmail":
         setPocEmail(value);
+        syncEmailIntoCustomParagraphs(value);
         break;
       case "closeDeadlineDate":
         setCloseDeadlineDate(value);
@@ -159,8 +182,14 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       case "paragraph1CustomText":
         setParagraph1CustomText(value);
         break;
+      case "paragraph4CustomText":
+        setParagraph4CustomText(value);
+        break;
       case "paragraph5CustomText":
         setParagraph5CustomText(value);
+        break;
+      case "additionalParagraphs":
+        setAdditionalParagraphs(Array.isArray(value) ? value : []);
         break;
       case "eligibilityRequirements":
         setEligibilityRequirements(value);
@@ -191,6 +220,8 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset file input so re-uploading the same file triggers onChange cleanly
+    e.target.value = "";
     if (!file) return;
 
     if (!file.name.endsWith(".docx")) {
@@ -219,8 +250,11 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       if (parsed.isCommandAppointed !== undefined) setIsCommandAppointed(parsed.isCommandAppointed);
       if (parsed.termDuration) setTermDuration(parsed.termDuration);
       if (parsed.memoDate) setMemoDate(parsed.memoDate);
-      if (parsed.paragraph1CustomText) setParagraph1CustomText(parsed.paragraph1CustomText);
-      if (parsed.paragraph5CustomText) setParagraph5CustomText(parsed.paragraph5CustomText);
+
+      setParagraph1CustomText(parsed.paragraph1CustomText || "");
+      setParagraph4CustomText(parsed.paragraph4CustomText || "");
+      setParagraph5CustomText(parsed.paragraph5CustomText || "");
+      setAdditionalParagraphs(parsed.additionalParagraphs || []);
 
       if (parsed.eligibilityRequirements && parsed.eligibilityRequirements.length > 0) {
         setEligibilityRequirements(parsed.eligibilityRequirements);
@@ -229,15 +263,24 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         setResponsibilities(parsed.responsibilities);
       }
       if (parsed.pocRankName) setPocRankName(parsed.pocRankName);
-      if (parsed.pocEmail) setPocEmail(parsed.pocEmail);
+      if (parsed.pocEmail) {
+        setPocEmail(parsed.pocEmail);
+        lastSyncedEmailRef.current = parsed.pocEmail;
+      }
       if (parsed.closeDeadlineDate) setCloseDeadlineDate(parsed.closeDeadlineDate);
       if (parsed.signerNameCaps) setSignerNameCaps(parsed.signerNameCaps);
       if (parsed.signerRank) setSignerRank(parsed.signerRank);
       if (parsed.signerTitle) setSignerTitle(parsed.signerTitle);
 
+      const extraCount = parsed.additionalParagraphs?.length || 0;
+      const extraNote =
+        extraCount > 0
+          ? ` Including ${extraCount} additional main paragraph${extraCount > 1 ? "s" : ""} (#6${extraCount > 1 ? `–#${5 + extraCount}` : ""}) under POC & Signer.`
+          : "";
+
       setStatusMessage({
         type: "success",
-        text: `Successfully imported "${file.name}"! All fields and multi-level subparagraphs have been extracted for review.`,
+        text: `Successfully imported "${file.name}"! All fields, POC email, and multi-level subparagraphs have been extracted.${extraNote}`,
       });
     } catch (err) {
       console.error("Error parsing custom docx:", err);
@@ -269,7 +312,9 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         isCommandAppointed: !!isCommandAppointed,
         termDuration: termDuration.trim(),
         paragraph1CustomText: paragraph1CustomText.trim(),
+        paragraph4CustomText: paragraph4CustomText.trim(),
         paragraph5CustomText: paragraph5CustomText.trim(),
+        additionalParagraphs: additionalParagraphs.map(p => p.trim()).filter(p => p !== ""),
         memoDate: memoDate.trim(),
         eligibilityRequirements: eligibilityRequirements.filter(r => r.trim() !== ""),
         responsibilities: responsibilities.filter(r => r.trim() !== ""),
@@ -361,7 +406,10 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       normalize(signerRank) !== normalize(initialDraft?.signerRank || "") ||
       normalize(signerTitle) !== normalize(initialDraft?.signerTitle || "") ||
       normalize(paragraph1CustomText) !== normalize(initialDraft?.paragraph1CustomText || "") ||
-      normalize(paragraph5CustomText) !== normalize(initialDraft?.paragraph5CustomText || "");
+      normalize(paragraph4CustomText) !== normalize(initialDraft?.paragraph4CustomText || "") ||
+      normalize(paragraph5CustomText) !== normalize(initialDraft?.paragraph5CustomText || "") ||
+      JSON.stringify(additionalParagraphs.map(p => normalize(p)).filter(p => p !== "")) !==
+        JSON.stringify((initialDraft?.additionalParagraphs || []).map((p: any) => normalize(p)).filter((p: string) => p !== ""));
 
     return isBaseModified || isEligibilityModified || isResponsibilitiesModified;
   };
@@ -384,7 +432,9 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
         isCommandAppointed: !!isCommandAppointed,
         termDuration: termDuration.trim(),
         paragraph1CustomText: paragraph1CustomText.trim(),
+        paragraph4CustomText: paragraph4CustomText.trim(),
         paragraph5CustomText: paragraph5CustomText.trim(),
+        additionalParagraphs: additionalParagraphs.map(p => p.trim()).filter(p => p !== ""),
         memoDate: memoDate.trim(),
         eligibilityRequirements: eligibilityRequirements.filter(r => r.trim() !== ""),
         responsibilities: responsibilities.filter(r => r.trim() !== ""),
@@ -460,7 +510,9 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
       isSpecialty,
       isCommandAppointed,
       paragraph1CustomText,
+      paragraph4CustomText,
       paragraph5CustomText,
+      additionalParagraphs,
       pocRankName,
       pocEmail,
       closeDeadlineDate,
@@ -1304,7 +1356,11 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             <input
                               type="text"
                               value={pocEmail}
-                              onChange={(e) => setPocEmail(e.target.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPocEmail(val);
+                                syncEmailIntoCustomParagraphs(val);
+                              }}
                               placeholder="e.g., jane.doe.mil@army.mil"
                               className="w-full text-xs bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
@@ -1424,6 +1480,159 @@ export default function VacancyAnnouncementModal({ duty, onClose, initialDraft }
                             className="w-full text-xs bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
+                      </div>
+
+                      {/* Paragraphs 4, 5 & Additional Paragraphs (6, 7, ...) */}
+                      <div className="p-4 bg-slate-950/60 rounded-lg border border-slate-800/80 space-y-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div>
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                              Closing & Additional Memo Paragraphs (4, 5, 6+)
+                            </span>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              Custom uploaded paragraphs (#4, #5, #6, etc.) are preserved here for review and export.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAdditionalParagraphs([...additionalParagraphs, ""])}
+                            className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded hover:bg-emerald-500/20 transition-colors cursor-pointer font-semibold"
+                          >
+                            + Add Paragraph #{6 + additionalParagraphs.length}
+                          </button>
+                        </div>
+
+                        {/* Paragraph 4 */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-[10px] font-semibold text-slate-400">
+                              Paragraph 4 {paragraph4CustomText ? "(Custom Wording Active)" : "(Standard Application Instructions)"}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "paragraph4",
+                                    label: "Paragraph 4",
+                                    section: "Paragraph 4",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                              {paragraph4CustomText && (
+                                <button
+                                  type="button"
+                                  onClick={() => setParagraph4CustomText("")}
+                                  className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                                >
+                                  Reset to Default
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={paragraph4CustomText}
+                            onChange={(e) => setParagraph4CustomText(e.target.value)}
+                            placeholder="Leave blank to use the standard Paragraph 4 application instructions, or enter custom text..."
+                            className="w-full text-xs bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        {/* Paragraph 5 */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-[10px] font-semibold text-slate-400">
+                              Paragraph 5 {paragraph5CustomText ? "(Custom Wording Active)" : "(Auto-generated from POC fields above unless customized)"}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewTarget({
+                                    field: "pocRankName",
+                                    label: "Paragraph 5",
+                                    section: "Paragraph 5",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                              >
+                                <Eye className="w-2.5 h-2.5" />
+                                <span>Preview</span>
+                              </button>
+                              {paragraph5CustomText && (
+                                <button
+                                  type="button"
+                                  onClick={() => setParagraph5CustomText("")}
+                                  className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                                >
+                                  Reset to Default
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={paragraph5CustomText}
+                            onChange={(e) => setParagraph5CustomText(e.target.value)}
+                            placeholder="Leave blank to auto-generate using the POC Name, Email, and Deadline above, or enter custom Paragraph 5 text..."
+                            className="w-full text-xs bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        {/* Paragraph 6+ */}
+                        {additionalParagraphs.map((extraText, idx) => (
+                          <div key={idx} className="space-y-1 p-2.5 bg-slate-900/70 border border-emerald-500/20 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+                                Paragraph {6 + idx}
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewTarget({
+                                      field: "additionalParagraph",
+                                      index: idx,
+                                      label: `Paragraph ${6 + idx}`,
+                                      section: `Paragraph ${6 + idx}`,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded px-1.5 py-0.5 transition cursor-pointer"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  <span>Preview</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...additionalParagraphs];
+                                    updated.splice(idx, 1);
+                                    setAdditionalParagraphs(updated);
+                                  }}
+                                  className="text-[10px] text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            <textarea
+                              rows={2}
+                              value={extraText}
+                              onChange={(e) => {
+                                const updated = [...additionalParagraphs];
+                                updated[idx] = e.target.value;
+                                setAdditionalParagraphs(updated);
+                              }}
+                              placeholder={`Enter Paragraph ${6 + idx} text...`}
+                              className="w-full text-xs bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -1619,7 +1828,9 @@ ${pocEmail || "[POC email]"}`;
           isCommandAppointed,
           termDuration,
           paragraph1CustomText,
+          paragraph4CustomText,
           paragraph5CustomText,
+          additionalParagraphs,
           eligibilityRequirements,
           responsibilities,
           pocRankName,

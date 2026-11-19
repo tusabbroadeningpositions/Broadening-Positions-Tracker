@@ -267,6 +267,38 @@ const getResponsibilityTextXml = (index: number, text: string, paraId: string) =
   return `<w:p w14:paraId="${paraId}" w14:textId="51CEFD61" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:ind w:firstLine="18pt"/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${letter}.  ${cleanText}</w:t></w:r></w:p>`;
 };
 
+const buildMainParagraphXml = (paraNumber: number, rawBody: string, firstParaId: string): string => {
+  const lines = (rawBody || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  if (lines.length === 0) return "";
+
+  const firstLineClean = ensureTwoSpacesAfterSentence(
+    lines[0].replace(new RegExp(`^${paraNumber}\\.\\s*`, "i"), "").trim()
+  );
+
+  let xml = `<w:p w14:paraId="${firstParaId}" w14:textId="${generateHexId()}" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${paraNumber}.  ${escapeXml(firstLineClean)}</w:t></w:r></w:p>`;
+
+  for (let i = 1; i < lines.length; i++) {
+    const subClean = ensureTwoSpacesAfterSentence(lines[i]);
+    const depth = getSubparagraphDepthLevel(subClean);
+    const indXml =
+      depth === 2
+        ? `<w:ind w:left="1440" w:firstLine="0"/>`
+        : depth === 1
+        ? `<w:ind w:left="720" w:firstLine="0"/>`
+        : `<w:ind w:firstLine="18pt"/>`;
+
+    xml +=
+      generateSpacerXml() +
+      `<w:p w14:paraId="${generateHexId()}" w14:textId="${generateHexId()}" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/>${indXml}<w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${escapeXml(subClean)}</w:t></w:r></w:p>`;
+  }
+
+  return xml;
+};
+
 export const cleanHeaderXml = (xml: string): string => {
   const pRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
   const pMatches = Array.from(xml.matchAll(pRegex)).map((m) => m[0]);
@@ -425,21 +457,46 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
         });
       }
       
-      // 4. Clean Paragraph 4 to remove the CD Teams page link and sentence
+      // 4. Handle Paragraph 4 (custom text or clean standard template text without CD Teams link)
       const p4Regex = new RegExp(`<w:p [^>]*w14:paraId="2B9AC5F9"[^>]*>[\\s\\S]*?<\\/w:p>`);
       if (p4Regex.test(xmlText)) {
-        const cleanP4Xml = `<w:p w14:paraId="2B9AC5F9" w14:textId="57168C55" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature.</w:t></w:r></w:p>`;
-        xmlText = xmlText.replace(p4Regex, cleanP4Xml);
+        if (draft.paragraph4CustomText && draft.paragraph4CustomText.trim() !== "") {
+          const customP4Xml = buildMainParagraphXml(4, draft.paragraph4CustomText, "2B9AC5F9");
+          xmlText = xmlText.replace(p4Regex, customP4Xml);
+        } else {
+          const cleanP4Text = ensureTwoSpacesAfterSentence(
+            "4.  To apply for this position, please submit a one-page memorandum (see AR 25-50 for formatting) indicating why you are interested in this broadening position. Include any skills or experience you have that may further qualify you for the position. Your memorandum must include your Element Leader’s Signature."
+          );
+          const cleanP4Xml = `<w:p w14:paraId="2B9AC5F9" w14:textId="57168C55" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">${escapeXml(cleanP4Text)}</w:t></w:r></w:p>`;
+          xmlText = xmlText.replace(p4Regex, cleanP4Xml);
+        }
       }
 
-      // 5. Handle Paragraph 5 (custom text from preview editor or default with template placeholders)
-      if (draft.paragraph5CustomText && draft.paragraph5CustomText.trim() !== "") {
-        const p5Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5FB"[^>]*>[\\s\\S]*?<\\/w:p>');
-        let p5Clean = draft.paragraph5CustomText.trim();
-        p5Clean = p5Clean.replace(/^5\.\s*/i, "");
-        const escapedP5 = escapeXml(p5Clean);
-        const customP5Xml = `<w:p w14:paraId="2B9AC5FB" w14:textId="57168C56" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">5.  ${escapedP5}</w:t></w:r></w:p>`;
-        xmlText = xmlText.replace(p5Regex, customP5Xml);
+      // 5. Handle Paragraph 5 & Additional Paragraphs (6, 7, ...)
+      const p5Regex = new RegExp('<w:p [^>]*w14:paraId="2B9AC5FB"[^>]*>[\\s\\S]*?<\\/w:p>');
+      const additionalParas = Array.isArray(draft.additionalParagraphs)
+        ? (draft.additionalParagraphs as string[]).filter((p) => p && p.trim() !== "")
+        : [];
+
+      if (p5Regex.test(xmlText)) {
+        const p5Match = xmlText.match(p5Regex);
+        let p5BlockXml = p5Match ? p5Match[0] : "";
+
+        if (draft.paragraph5CustomText && draft.paragraph5CustomText.trim() !== "") {
+          p5BlockXml = buildMainParagraphXml(5, draft.paragraph5CustomText, "2B9AC5FB");
+        } else {
+          // Ensure template Paragraph 5 also uses 2 spaces after periods
+          p5BlockXml = `<w:p w14:paraId="2B9AC5FB" w14:textId="57168C56" w:rsidR="00A77B3E" w:rsidRDefault="00A11293"><w:pPr><w:suppressAutoHyphens/><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr><w:t xml:space="preserve">5.  Submit any questions and memorandum to [Rank Name] at [email address].  The deadline for applying is 1700 on [enter date].</w:t></w:r></w:p>`;
+        }
+
+        // Append Paragraphs 6, 7, ... right after Paragraph 5 (before the signature block spacers)
+        if (additionalParas.length > 0) {
+          additionalParas.forEach((extraParaText, idx) => {
+            p5BlockXml += generateSpacerXml() + buildMainParagraphXml(6 + idx, extraParaText, generateHexId());
+          });
+        }
+
+        xmlText = xmlText.replace(p5Regex, p5BlockXml);
       }
       
       zip.file(filename, xmlText);
@@ -450,6 +507,7 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     delimiters: { start: "[", end: "]" },
     paragraphLoop: true,
     linebreaks: true,
+    nullGetter: (part: any) => (part && part.value ? `[${part.value}]` : ""),
   });
 
   const memoDate = draft.memoDate || formatDateToMilitary(new Date());
