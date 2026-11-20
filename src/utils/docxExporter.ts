@@ -157,50 +157,31 @@ const escapeXml = (unsafe: string) => {
 export const ensureTwoSpacesAfterSentence = (text: string): string => {
   if (!text) return "";
 
+  const saved: string[] = [];
+  const stash = (match: string) => {
+    const token = `___ABBR_TOKEN_${saved.length}___`;
+    saved.push(match);
+    return token;
+  };
+
   let formatted = text;
 
-  // Protect common military and standard abbreviations
-  const protectedAbbrs: [RegExp, string][] = [
-    [/\bU\.S\./gi, "___US_ABBR___"],
-    [/\be\.g\./gi, "___EG_ABBR___"],
-    [/\bi\.e\./gi, "___IE_ABBR___"],
-    [/\bMr\./gi, "___MR_ABBR___"],
-    [/\bMs\./gi, "___MS_ABBR___"],
-    [/\bDr\./gi, "___DR_ABBR___"],
-    [/\bNo\./gi, "___NO_ABBR___"],
-    [/\bvs\./gi, "___VS_ABBR___"],
-    [/\bNLT\./gi, "___NLT_ABBR___"],
-    [/\bCo\./gi, "___CO_ABBR___"],
-    [/\bInc\./gi, "___INC_ABBR___"],
-    [/\bDept\./gi, "___DEPT_ABBR___"],
-    [/\bPara\./gi, "___PARA_ABBR___"],
-    [/\b(?<=\b[A-Z])\.(?=[A-Z]\b)/g, "___DOT_INITIAL___"],
+  // Protect common military and standard abbreviations, multi-dot acronyms, and middle initials (e.g. "John A. Smith")
+  const protectedPatterns: RegExp[] = [
+    /\b(?:U\.S\.(?:A\.)?|e\.g\.|i\.e\.|Mr\.|Mrs\.|Ms\.|Dr\.|No\.|vs\.|NLT\.|Co\.|Inc\.|Dept\.|Para\.|Ft\.|St\.|Mt\.|Jr\.|Sr\.|Prof\.|Rev\.)/gi,
+    /(?:\b[A-Z]\.){2,}/g,
+    /(?<=\b[A-Z][a-z]+\s[A-Z])\./g,
   ];
 
-  for (const [pattern, placeholder] of protectedAbbrs) {
-    formatted = formatted.replace(pattern, placeholder);
+  for (const pattern of protectedPatterns) {
+    formatted = formatted.replace(pattern, stash);
   }
 
-  // Replace terminal punctuation (. ? !) followed by a single space and a capital letter, digit, or quote with 2 spaces
-  formatted = formatted.replace(/([.?!])\s(?=[A-Z0-9"])/g, "$1  ");
+  // Normalize 1+ horizontal spaces after terminal punctuation (. ? ! and optional closing quote/paren) before the next sentence to exactly 2 spaces
+  formatted = formatted.replace(/([.?!][)"'\]]?)[ \t]+(?=[A-Z0-9"'(])/g, "$1  ");
 
-  // Restore protected abbreviations
-  for (const [pattern, placeholder] of protectedAbbrs) {
-    if (placeholder === "___US_ABBR___") formatted = formatted.replace(/___US_ABBR___/g, "U.S.");
-    else if (placeholder === "___EG_ABBR___") formatted = formatted.replace(/___EG_ABBR___/g, "e.g.");
-    else if (placeholder === "___IE_ABBR___") formatted = formatted.replace(/___IE_ABBR___/g, "i.e.");
-    else if (placeholder === "___MR_ABBR___") formatted = formatted.replace(/___MR_ABBR___/g, "Mr.");
-    else if (placeholder === "___MS_ABBR___") formatted = formatted.replace(/___MS_ABBR___/g, "Ms.");
-    else if (placeholder === "___DR_ABBR___") formatted = formatted.replace(/___DR_ABBR___/g, "Dr.");
-    else if (placeholder === "___NO_ABBR___") formatted = formatted.replace(/___NO_ABBR___/g, "No.");
-    else if (placeholder === "___VS_ABBR___") formatted = formatted.replace(/___VS_ABBR___/g, "vs.");
-    else if (placeholder === "___NLT_ABBR___") formatted = formatted.replace(/___NLT_ABBR___/g, "NLT.");
-    else if (placeholder === "___CO_ABBR___") formatted = formatted.replace(/___CO_ABBR___/g, "Co.");
-    else if (placeholder === "___INC_ABBR___") formatted = formatted.replace(/___INC_ABBR___/g, "Inc.");
-    else if (placeholder === "___DEPT_ABBR___") formatted = formatted.replace(/___DEPT_ABBR___/g, "Dept.");
-    else if (placeholder === "___PARA_ABBR___") formatted = formatted.replace(/___PARA_ABBR___/g, "Para.");
-    else if (placeholder === "___DOT_INITIAL___") formatted = formatted.replace(/___DOT_INITIAL___/g, ".");
-  }
+  // Restore protected abbreviations with original casing
+  formatted = formatted.replace(/___ABBR_TOKEN_(\d+)___/g, (_, idx) => saved[Number(idx)] ?? _);
 
   return formatted;
 };
@@ -300,7 +281,13 @@ const buildMainParagraphXml = (paraNumber: number, rawBody: string, firstParaId:
 };
 
 export const cleanHeaderXml = (xml: string): string => {
-  const pRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
+  // Never strip/flatten headers that contain tables, drawings, images, VML shapes, or structured tags
+  // (e.g., Page 1 Department of the Army letterhead tables & unit crests).
+  if (/<w:tbl\b|<w:drawing\b|<w:pict\b|<v:shape\b|<w:sdt\b/i.test(xml)) {
+    return xml;
+  }
+
+  const pRegex = /<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
   const pMatches = Array.from(xml.matchAll(pRegex)).map((m) => m[0]);
 
   let firstTextIdx = -1;
@@ -345,8 +332,8 @@ export const generateVacancyMemoBlob = (draft: any): Blob => {
     if (filename.endsWith(".xml")) {
       let xmlText = zip.files[filename].asText();
       
-      // Clean second page headers to eliminate excess top margin while leaving exactly 1 space line before body text
-      if (filename.includes("header1") || filename.includes("header2")) {
+      // Clean second page headers to eliminate excess top margin while preserving Page 1 letterhead tables
+      if (filename.startsWith("word/header") && !filename.includes("_rels/")) {
         xmlText = cleanHeaderXml(xmlText);
       }
 
@@ -642,213 +629,242 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
-  try {
-    const templateBytes = base64ToUint8Array(APPLICATION_MEMO_TEMPLATE_BASE64);
-    const zip = new PizZip(templateBytes);
+export const generateApplicationMemoBlob = (data: ApplicationMemoData): Blob => {
+  const templateBytes = base64ToUint8Array(APPLICATION_MEMO_TEMPLATE_BASE64);
+  const zip = new PizZip(templateBytes);
 
-    // Remove customXml and docMetadata to prevent SharePoint/compliance locks
-    Object.keys(zip.files).forEach((f) => {
-      if (f.startsWith("customXml/") || f.startsWith("docMetadata/")) {
-        zip.remove(f);
-      }
-    });
-
-    if (zip.files["[Content_Types].xml"]) {
-      let contentTypes = zip.files["[Content_Types].xml"].asText();
-      contentTypes = contentTypes.replace(/<Override PartName="\/customXml\/itemProps\d\.xml"[^>]*\/>/g, "");
-      contentTypes = contentTypes.replace(/<Override PartName="\/docMetadata\/LabelInfo\.xml"[^>]*\/>/g, "");
-      zip.file("[Content_Types].xml", contentTypes);
+  // Remove customXml and docMetadata to prevent SharePoint/compliance locks
+  Object.keys(zip.files).forEach((f) => {
+    if (f.startsWith("customXml/") || f.startsWith("docMetadata/")) {
+      zip.remove(f);
     }
+  });
 
-    if (zip.files["_rels/.rels"]) {
-      let mainRels = zip.files["_rels/.rels"].asText();
-      mainRels = mainRels.replace(/<Relationship [^>]*Target="docMetadata\/LabelInfo\.xml"[^>]*\/>/g, "");
-      zip.file("_rels/.rels", mainRels);
-    }
+  if (zip.files["[Content_Types].xml"]) {
+    let contentTypes = zip.files["[Content_Types].xml"].asText();
+    contentTypes = contentTypes.replace(/<Override PartName="\/customXml\/itemProps\d\.xml"[^>]*\/>/g, "");
+    contentTypes = contentTypes.replace(/<Override PartName="\/docMetadata\/LabelInfo\.xml"[^>]*\/>/g, "");
+    zip.file("[Content_Types].xml", contentTypes);
+  }
 
-    Object.keys(zip.files).forEach((filename) => {
-      if (filename.includes("header1") || filename.includes("header2")) {
-        let headerText = zip.files[filename].asText();
-        headerText = cleanHeaderXml(headerText);
-        zip.file(filename, headerText);
+  if (zip.files["_rels/.rels"]) {
+    let mainRels = zip.files["_rels/.rels"].asText();
+    mainRels = mainRels.replace(/<Relationship [^>]*Target="docMetadata\/LabelInfo\.xml"[^>]*\/>/g, "");
+    zip.file("_rels/.rels", mainRels);
+  }
+
+  const positionTitle = (data.positionTitle || "").trim();
+
+  // Only clean continuation headers (never Page 1 letterhead tables/images or .rels files)
+  Object.keys(zip.files).forEach((filename) => {
+    if (filename.startsWith("word/header") && filename.endsWith(".xml") && !filename.includes("_rels/")) {
+      let headerText = zip.files[filename].asText();
+      if (positionTitle && headerText.includes("SUBJECT:  </w:t>")) {
+        headerText = headerText.replace(
+          "SUBJECT:  </w:t>",
+          `SUBJECT:  Application for ${escapeXml(positionTitle)} Vacancy</w:t>`
+        );
       }
+      headerText = cleanHeaderXml(headerText);
+      zip.file(filename, headerText);
+    }
+  });
+
+  const docXml = zip.files["word/document.xml"].asText();
+
+  const buildRunsFromText = (newText: string): string => {
+    const rPr = `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>`;
+    const lines = newText.split(/\r?\n/);
+    let runs = "";
+    lines.forEach((line, i) => {
+      if (i > 0) runs += `<w:r>${rPr}<w:br/></w:r>`;
+      runs += `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r>`;
     });
+    return runs;
+  };
 
-    let docXml = zip.files["word/document.xml"].asText();
+  function replaceParagraphContent(docXmlStr: string, targetSubstr: string, newText: string): string {
+    const singlePRegex = /<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
+    return docXmlStr.replace(singlePRegex, (fullPara) => {
+      const plainText = fullPara.replace(/<[^>]+>/g, "");
+      if (!plainText.includes(targetSubstr)) {
+        return fullPara;
+      }
 
-    function replaceParagraphContent(docXmlStr: string, targetSubstr: string, newText: string): string {
-      const singlePRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
-      return docXmlStr.replace(singlePRegex, (fullPara) => {
-        const plainText = fullPara.replace(/<[^>]+>/g, "");
-        if (!plainText.includes(targetSubstr)) {
-          return fullPara;
-        }
+      if (!newText || newText.trim() === "") {
+        return ""; // Delete this single paragraph completely if empty
+      }
 
-        if (!newText || newText.trim() === "") {
-          return ""; // Delete this single paragraph completely if empty
-        }
+      const openTagMatch = fullPara.match(/^<w:p\b[^>]*>/);
+      const openTag = openTagMatch ? openTagMatch[0] : "<w:p>";
+      const pPrMatch = fullPara.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
+      const pPr = pPrMatch ? pPrMatch[0] : "";
 
+      return `${openTag}${pPr}${buildRunsFromText(newText)}</w:p>`;
+    });
+  }
+
+  function replaceParagraphByIdOrText(
+    docXmlStr: string,
+    paraId: string,
+    fallbackSubstr: string,
+    newText: string
+  ): string {
+    const paraIdRegex = new RegExp(
+      `<w:p\\b(?![^>]*\\/>)[^>]*w14:paraId="${paraId}"[^>]*>(?:(?!<\\/w:p>)[\\s\\S])*?<\\/w:p>`
+    );
+    if (paraIdRegex.test(docXmlStr)) {
+      return docXmlStr.replace(paraIdRegex, (fullPara) => {
+        if (!newText || newText.trim() === "") return "";
         const openTagMatch = fullPara.match(/^<w:p\b[^>]*>/);
         const openTag = openTagMatch ? openTagMatch[0] : "<w:p>";
-        const closeTag = "</w:p>";
-
         const pPrMatch = fullPara.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
         const pPr = pPrMatch ? pPrMatch[0] : "";
-
-        const rPr = `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>`;
-
-        const lines = newText.split("\n");
-        let runs = "";
-        lines.forEach((line, i) => {
-          if (i > 0) runs += `<w:r>${rPr}<w:br/></w:r>`;
-          runs += `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r>`;
-        });
-
-        return `${openTag}${pPr}${runs}${closeTag}`;
+        return `${openTag}${pPr}${buildRunsFromText(newText)}</w:p>`;
       });
     }
+    return replaceParagraphContent(docXmlStr, fallbackSubstr, newText);
+  }
 
-    // Format inputs
-    const memoDate = data.memoDate || new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-    const shopNcoic = data.shopNcoicRankName || "";
-    const positionTitle = data.positionTitle || "";
-    const applicantRankName = data.applicantRankName || "";
+  // Format inputs
+  const memoDate = data.memoDate || new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  const shopNcoic = data.shopNcoicRankName || "";
+  const applicantRankName = data.applicantRankName || "";
 
-    const quals = (data.qualifications || []).filter((q) => q && q.trim() !== "");
+  const quals = (data.qualifications || [])
+    .filter((q) => q && q.trim() !== "")
+    .map((q) => ensureTwoSpacesAfterSentence(q.trim()));
 
-    const otherRoles = data.otherRoles || "";
-    const interestReason = data.interestReason || "";
-    const pertinentInfo = data.pertinentInfo || "";
+  const otherRoles = data.otherRoles ? ensureTwoSpacesAfterSentence(data.otherRoles.trim()) : "";
+  const interestReason = data.interestReason ? ensureTwoSpacesAfterSentence(data.interestReason.trim()) : "";
+  const pertinentInfo = data.pertinentInfo ? ensureTwoSpacesAfterSentence(data.pertinentInfo.trim()) : "";
 
-    const soldierName = (data.soldierNameCaps || "").toUpperCase();
-    const soldierRankBranch = data.soldierRankBranch || "SSG, USA";
-    const elName = (data.elementLeaderNameCaps || "").toUpperCase();
-    const elRankBranch = data.elementLeaderRankBranch || "SGM, USA";
-    const elTitle = data.elementLeaderTitle || "Element Leader";
+  const soldierName = (data.soldierNameCaps || "").toUpperCase();
+  const soldierRankBranch = data.soldierRankBranch || "SSG, USA";
+  const elName = (data.elementLeaderNameCaps || "").toUpperCase();
+  const elRankBranch = data.elementLeaderRankBranch || "SGM, USA";
+  const elTitle = data.elementLeaderTitle || "Element Leader";
 
-    let xml = docXml;
+  let xml = docXml;
 
-    // 1. Date
-    if (memoDate) {
-      xml = replaceParagraphContent(xml, "3 March 2022", memoDate);
-    }
+  // 1. Date
+  if (memoDate) {
+    xml = replaceParagraphContent(xml, "3 March 2022", memoDate);
+  }
 
-    // 2. Shop NCOIC
-    if (shopNcoic) {
-      xml = replaceParagraphContent(xml, "[SHOP NCOIC RANK AND NAME]", `MEMORANDUM FOR ${shopNcoic}`);
-    }
+  // 2. Shop NCOIC
+  if (shopNcoic) {
+    xml = replaceParagraphContent(xml, "[SHOP NCOIC RANK AND NAME]", `MEMORANDUM FOR ${shopNcoic}`);
+  }
 
-    // 3. Subject Position Title
-    if (positionTitle) {
-      xml = replaceParagraphContent(xml, "[BROADENING POSITION JOB TITLE]", `SUBJECT: Application for ${positionTitle} Vacancy`);
-    }
+  // 3. Subject Position Title
+  if (positionTitle) {
+    xml = replaceParagraphContent(xml, "[BROADENING POSITION JOB TITLE]", `SUBJECT: Application for ${positionTitle} Vacancy`);
+  }
 
-    // 4. Intro Applicant Rank, Name & Position Title
-    if (applicantRankName && positionTitle) {
-      xml = replaceParagraphContent(xml, "I, [RANK AND NAME]", `I, ${applicantRankName}, request consideration for the ${positionTitle} position.`);
-    } else if (applicantRankName) {
-      xml = replaceParagraphContent(xml, "I, [RANK AND NAME]", `I, ${applicantRankName}, request consideration for the position.`);
-    }
+  // 4. Intro Applicant Rank, Name & Position Title
+  if (applicantRankName && positionTitle) {
+    xml = replaceParagraphContent(xml, "I, [RANK AND NAME]", `I, ${applicantRankName}, request consideration for the ${positionTitle} position.`);
+  } else if (applicantRankName) {
+    xml = replaceParagraphContent(xml, "I, [RANK AND NAME]", `I, ${applicantRankName}, request consideration for the position.`);
+  }
 
-    // 5. Qualifications
-    if (quals.length > 0 && quals[0].trim()) {
-      xml = replaceParagraphContent(xml, "QUALIFICATION #1", quals[0]);
-    } else {
-      xml = replaceParagraphContent(xml, "QUALIFICATION #1", "");
-    }
+  // 5. Qualifications
+  if (quals.length > 0 && quals[0].trim()) {
+    xml = replaceParagraphContent(xml, "QUALIFICATION #1", quals[0]);
+  } else {
+    xml = replaceParagraphContent(xml, "QUALIFICATION #1", "");
+  }
 
-    if (quals.length > 1 && quals[1].trim()) {
-      xml = replaceParagraphContent(xml, "QUALIFICATION #2", quals[1]);
-    } else {
-      xml = replaceParagraphContent(xml, "QUALIFICATION #2", "");
-    }
+  if (quals.length > 1 && quals[1].trim()) {
+    xml = replaceParagraphContent(xml, "QUALIFICATION #2", quals[1]);
+  } else {
+    xml = replaceParagraphContent(xml, "QUALIFICATION #2", "");
+  }
 
-    if (quals.length > 2) {
-      const rPr = `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>`;
-      let additionalParas = "";
-      for (let i = 2; i < quals.length; i++) {
-        if (!quals[i].trim()) continue;
-        const text = quals[i];
-        const pPr = `<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="18"/></w:numPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:pPr>`;
-        const run = `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
-        additionalParas += `<w:p w14:paraId="77${i}00000" w14:textId="77777777" w:rsidR="00013133" w:rsidRDefault="001A4088">${pPr}${run}</w:p>`;
+  if (quals.length > 2) {
+    const rPr = `<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>`;
+    const blankSpacer = `<w:p w14:paraId="${generateHexId()}" w14:textId="77777777" w:rsidR="00D1271F" w:rsidRDefault="00D1271F"><w:pPr>${rPr}</w:pPr></w:p>`;
+    let additionalParas = "";
+    for (let i = 2; i < quals.length; i++) {
+      if (!quals[i].trim()) continue;
+      if (i > 2) {
+        additionalParas += `<w:p w14:paraId="${generateHexId()}" w14:textId="77777777" w:rsidR="00D1271F" w:rsidRDefault="00D1271F"><w:pPr>${rPr}</w:pPr></w:p>`;
       }
-      const singlePRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
-      xml = xml.replace(singlePRegex, (para) => {
-        const plainText = para.replace(/<[^>]+>/g, "");
-        if (plainText.includes("QUALIFICATION #3")) {
-          return additionalParas;
-        }
-        return para;
-      });
-    } else {
-      // Omit QUALIFICATION #3 and its following blank spacer paragraph to avoid extra space
-      const qual3AndFollowingSpacerRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?QUALIFICATION #3[\s\S]*?<\/w:p>\s*<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
-      if (qual3AndFollowingSpacerRegex.test(xml)) {
-        xml = xml.replace(qual3AndFollowingSpacerRegex, "");
-      } else {
-        xml = replaceParagraphContent(xml, "QUALIFICATION #3", "");
+      const pPr = `<w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="18"/></w:numPr>${rPr}</w:pPr>`;
+      additionalParas += `<w:p w14:paraId="${generateHexId()}" w14:textId="77777777" w:rsidR="00013133" w:rsidRDefault="001A4088">${pPr}${buildRunsFromText(quals[i])}</w:p>`;
+    }
+    const singlePRegex = /<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/g;
+    xml = xml.replace(singlePRegex, (para) => {
+      const plainText = para.replace(/<[^>]+>/g, "");
+      if (plainText.includes("QUALIFICATION #3")) {
+        return additionalParas || blankSpacer;
       }
-    }
-
-    // 6. Other roles
-    if (otherRoles) {
-      xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", otherRoles);
-    } else {
-      // Omit the other roles paragraph AND the following blank spacer paragraph to avoid double spacing
-      const otherRolesAndFollowingSpacerRegex = /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?\[IF APPLICABLE, SPEAK ABOUT OTHER ROLES[\s\S]*?<\/w:p>\s*<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
-      if (otherRolesAndFollowingSpacerRegex.test(xml)) {
-        xml = xml.replace(otherRolesAndFollowingSpacerRegex, "");
-      } else {
-        xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", "");
-      }
-    }
-
-    // 7. Reason for interest
-    if (interestReason) {
-      xml = replaceParagraphContent(xml, "[TELL THE PANEL WHY YOU ARE INTERESTED", interestReason);
-    }
-
-    // 8. Pertinent info
-    xml = replaceParagraphContent(xml, "[INCLUDE ANY OTHER PERTINENT INFO", pertinentInfo);
-
-    // 9. Soldier Name (Caps)
-    if (soldierName) {
-      xml = replaceParagraphContent(xml, "[SOLDIER’S NAME]", soldierName);
-    }
-
-    // 10. Soldier Rank & Branch
-    if (soldierRankBranch) {
-      xml = replaceParagraphContent(xml, "SSG, USA", soldierRankBranch);
-    }
-
-    // 11. Element Leader Name (Caps)
-    if (elName) {
-      xml = replaceParagraphContent(xml, "[ELEMENT LEADER’S NAME]", elName);
-    }
-
-    // 12. Element Leader Rank & Branch
-    if (elRankBranch) {
-      xml = replaceParagraphContent(xml, "SGM, USA", elRankBranch);
-    }
-
-    // 13. Element Leader Title
-    if (elTitle && elTitle !== "Element Leader") {
-      xml = replaceParagraphContent(xml, "Element Leader", elTitle);
-    }
-
-
-
-    // Re-assemble document XML
-    zip.file("word/document.xml", xml);
-
-    // Generate zip file buffer
-    const blob = zip.generate({
-      type: "blob",
-      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      compression: "DEFLATE",
+      return para;
     });
+  } else {
+    // Omit QUALIFICATION #3 and its following blank spacer paragraph to avoid extra space
+    const qual3AndFollowingSpacerRegex =
+      /<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?QUALIFICATION #3(?:(?!<\/w:p>)[\s\S])*?<\/w:p>\s*<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
+    if (qual3AndFollowingSpacerRegex.test(xml)) {
+      xml = xml.replace(qual3AndFollowingSpacerRegex, "");
+    } else {
+      xml = replaceParagraphContent(xml, "QUALIFICATION #3", "");
+    }
+  }
+
+  // 6. Other roles
+  if (otherRoles) {
+    xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", otherRoles);
+  } else {
+    // Omit the other roles paragraph AND the following blank spacer paragraph to avoid double spacing
+    const otherRolesAndFollowingSpacerRegex =
+      /<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?\[IF APPLICABLE, SPEAK ABOUT OTHER ROLES(?:(?!<\/w:p>)[\s\S])*?<\/w:p>\s*<w:p\b(?![^>]*\/>)[^>]*>(?:(?!<\/w:p>)[\s\S])*?<\/w:p>/;
+    if (otherRolesAndFollowingSpacerRegex.test(xml)) {
+      xml = xml.replace(otherRolesAndFollowingSpacerRegex, "");
+    } else {
+      xml = replaceParagraphContent(xml, "[IF APPLICABLE, SPEAK ABOUT OTHER ROLES", "");
+    }
+  }
+
+  // 7. Reason for interest
+  if (interestReason) {
+    xml = replaceParagraphContent(xml, "[TELL THE PANEL WHY YOU ARE INTERESTED", interestReason);
+  }
+
+  // 8. Pertinent info
+  xml = replaceParagraphContent(xml, "[INCLUDE ANY OTHER PERTINENT INFO", pertinentInfo);
+
+  // 9-13. Signature blocks (target exact template paraIds to avoid collisions with body text or matching ranks)
+  if (soldierName) {
+    xml = replaceParagraphByIdOrText(xml, "35BAAD3F", "[SOLDIER’S NAME]", soldierName);
+  }
+  if (soldierRankBranch) {
+    xml = replaceParagraphByIdOrText(xml, "3129444D", "SSG, USA", soldierRankBranch);
+  }
+  if (elName) {
+    xml = replaceParagraphByIdOrText(xml, "53593D16", "[ELEMENT LEADER’S NAME]", elName);
+  }
+  if (elRankBranch) {
+    xml = replaceParagraphByIdOrText(xml, "5595279F", "SGM, USA", elRankBranch);
+  }
+  if (elTitle && elTitle !== "Element Leader") {
+    xml = replaceParagraphByIdOrText(xml, "74BD5271", "Element Leader", elTitle);
+  }
+
+  // Re-assemble document XML
+  zip.file("word/document.xml", xml);
+
+  return zip.generate({
+    type: "blob",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    compression: "DEFLATE",
+  });
+};
+
+export const downloadApplicationMemo = async (data: ApplicationMemoData) => {
+  try {
+    const blob = generateApplicationMemoBlob(data);
 
     // Trigger browser download
     const safeTitle = (data.positionTitle || "Position").replace(/[^a-zA-Z0-9_-]/g, "_");

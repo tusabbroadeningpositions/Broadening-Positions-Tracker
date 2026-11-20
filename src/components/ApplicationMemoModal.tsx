@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { X, Download, FileText, User, Award, HelpCircle, Check, Plus, Trash2 } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Download, FileText, User, Award, HelpCircle, Check, Plus, Trash2, AlertCircle } from "lucide-react";
 import { downloadApplicationMemo, ApplicationMemoData } from "../utils/docxExporter";
 
 interface ApplicationMemoModalProps {
@@ -34,6 +34,100 @@ function extractRankAndName(input: string) {
     derivedNameCaps: trimmed.toUpperCase(),
     derivedRankBranch: "",
   };
+}
+
+const OTHER_ROLES_ERROR_MSG =
+  'Please include a brief description of what you did in your TUSAB role(s), not just a list of titles (e.g., "Served as Supply NCO, managing equipment accountability and coordinating logistics for 40 Soldiers.").';
+
+const TITLE_NOUNS_ENDING_IN_ING_OR_ED = new Set([
+  "training",
+  "broadening",
+  "recruiting",
+  "marketing",
+  "engineering",
+  "accounting",
+  "scheduling",
+  "planning",
+  "staffing",
+  "briefing",
+  "staging",
+  "lighting",
+  "sound",
+  "purchasing",
+  "contracting",
+  "approving",
+  "certifying",
+  "reporting",
+  "receiving",
+  "commanding",
+  "acting",
+  "retired",
+  "assigned",
+  "attached",
+  "appointed",
+  "detailed",
+  "certified",
+  "qualified",
+  "designated",
+  "united",
+  "advanced",
+  "specialized",
+  "limited",
+  "consolidated",
+]);
+
+const ACTION_OR_DUTY_VERB_REGEX =
+  /\b(managed|led|supervised|coordinated|oversaw|maintained|handled|supported|assisted|performed|conducted|executed|developed|organized|processed|reviewed|audited|prepared|tracked|administered|ensured|provided|created|established|directed|mentored|advised|ran|kept|ordered|built|taught|wrote|helped|implemented|monitored|updated|verified|dispatched|reconciled|operated|repaired|inspected|issued|distributed|filed|resolved|facilitated|managing|leading|supervising|coordinating|overseeing|maintaining|handling|supporting|assisting|performing|conducting|executing|developing|organizing|processing|reviewing|auditing|preparing|tracking|administering|ensuring|providing|creating|establishing|directing|mentoring|advising|running|keeping|ordering|building|teaching|writing|helping|implementing|monitoring|updating|verifying|operating|repairing|inspecting|issuing|distributing|filing|resolving|facilitating|responsible|accountable|duties|tasked|charged|where\s+i|in\s+charge\s+of|responsible\s+for|duties\s+included)\b/i;
+
+export function validateOtherRolesDescription(input: string): string | null {
+  const trimmed = (input || "").trim();
+  if (!trimmed) return null; // Field is optional
+
+  const lineCleaned = trimmed
+    .replace(/^\s*(?:[-*•]|\d+[.)]|\([a-z0-9]+\)|[a-z]\.)\s+/gim, "")
+    .trim();
+
+  const normalized = lineCleaned.replace(/\s+/g, " ").trim();
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < 6 || normalized.length < 25) {
+    return OTHER_ROLES_ERROR_MSG;
+  }
+
+  // Strip introductory framing like "I served as ..." or "My roles included ..." to inspect what follows
+  const withoutIntro = lineCleaned
+    .replace(
+      /^(?:i\s+(?:have\s+)?(?:served|worked|acted|been)\s+(?:as\s+)?|(?:served|worked|acted)\s+as\s+|(?:other\s+)?roles?\s+(?:i\s+)?(?:performed|held|had)(?:\s+at\s+tusab)?\s*(?:include|included|were|are|:)?\s*|my\s+(?:other\s+)?roles?\s+(?:include|included|were|are)\s*:?\s*)/i,
+      ""
+    )
+    .trim();
+
+  if (!withoutIntro) {
+    return OTHER_ROLES_ERROR_MSG;
+  }
+
+  const hasKnownDutyVerb = ACTION_OR_DUTY_VERB_REGEX.test(withoutIntro);
+
+  // Check for other regular past-tense/gerund verbs not in the role-title allowlist
+  const candidateInflected = withoutIntro.match(/\b[a-z]{4,}(?:ed|ing)\b/gi) || [];
+  const hasOtherActionVerb = candidateInflected.some(
+    (w) => !TITLE_NOUNS_ENDING_IN_ING_OR_ED.has(w.toLowerCase())
+  );
+
+  if (!hasKnownDutyVerb && !hasOtherActionVerb) {
+    return OTHER_ROLES_ERROR_MSG;
+  }
+
+  // Catch bare multi-item lists (comma- or newline-separated) where every segment is short and lacks descriptive verbs
+  const segments = withoutIntro
+    .split(/[,;\n/|]+/)
+    .map((s) => s.replace(/\band\b/gi, " ").trim())
+    .filter(Boolean);
+
+  if (segments.length >= 2 && segments.every((seg) => seg.split(/\s+/).length <= 4) && !hasKnownDutyVerb) {
+    return OTHER_ROLES_ERROR_MSG;
+  }
+
+  return null;
 }
 
 export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
@@ -74,7 +168,10 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otherRolesError, setOtherRolesError] = useState<string | null>(null);
   const [showAcknowledgePopup, setShowAcknowledgePopup] = useState(false);
+  const otherRolesRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -105,6 +202,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
       });
       setSuccessMessage(null);
       setErrorMessage(null);
+      setOtherRolesError(null);
       setShowAcknowledgePopup(false);
     }
   }, [isOpen, vacancy]);
@@ -115,6 +213,10 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
     const { name, value } = e.target;
     setSuccessMessage(null);
     setErrorMessage(null);
+
+    if (name === "otherRoles") {
+      setOtherRolesError((prev) => (prev ? validateOtherRolesDescription(value) : null));
+    }
 
     if (name === "applicantRankName") {
       const { derivedNameCaps, derivedRankBranch } = extractRankAndName(value);
@@ -159,16 +261,30 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
     }
   };
 
-  const handleExport = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performExport = async (bypassOtherRolesWarning = false) => {
     setSuccessMessage(null);
     setErrorMessage(null);
+
+    if (bypassOtherRolesWarning && formRef.current && !formRef.current.reportValidity()) {
+      return;
+    }
 
     const validQuals = formData.qualifications.filter((q) => q.trim().length > 0);
     if (validQuals.length < 2) {
       setErrorMessage("Please fill out a minimum of 2 qualifications before exporting.");
       return;
     }
+
+    if (!bypassOtherRolesWarning) {
+      const rolesValidationError = validateOtherRolesDescription(formData.otherRoles);
+      if (rolesValidationError) {
+        setOtherRolesError(rolesValidationError);
+        setErrorMessage(rolesValidationError);
+        otherRolesRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+    setOtherRolesError(null);
 
     setIsExporting(true);
     try {
@@ -200,6 +316,11 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
     }
   };
 
+  const handleExport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performExport(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-200">
@@ -224,7 +345,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
         </div>
 
         {/* Modal Form Body */}
-        <form onSubmit={handleExport} className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
+        <form ref={formRef} onSubmit={handleExport} className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
           
           {/* Notification Banners */}
           {successMessage && (
@@ -235,9 +356,21 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
           )}
 
           {errorMessage && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs flex items-center gap-2">
-              <X className="w-4 h-4 shrink-0 text-rose-400" />
-              <span>{errorMessage}</span>
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                <X className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{errorMessage}</span>
+              </div>
+              {otherRolesError && errorMessage === otherRolesError && (
+                <button
+                  type="button"
+                  disabled={isExporting}
+                  onClick={() => performExport(true)}
+                  className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 font-semibold rounded-lg text-[11px] transition cursor-pointer shrink-0"
+                >
+                  Ignore and export anyway
+                </button>
+              )}
             </div>
           )}
 
@@ -388,7 +521,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
               <HelpCircle className="w-4 h-4" /> Background & Interest Statements
             </h3>
 
-            <div>
+            <div ref={otherRolesRef}>
               <label className="block text-xs font-medium text-slate-300 mb-1">
                 Other Roles Performed at TUSAB <span className="text-slate-500">(Optional)</span>
               </label>
@@ -397,9 +530,34 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
                 name="otherRoles"
                 value={formData.otherRoles}
                 onChange={handleChange}
-                placeholder="Speak about other roles you have performed at TUSAB, both broadening and daily scope..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-500"
+                onBlur={() => setOtherRolesError(validateOtherRolesDescription(formData.otherRoles))}
+                placeholder="e.g. Served as Supply NCO, managing equipment accountability and coordinating logistics for 40 Soldiers."
+                className={`w-full bg-slate-900 border rounded-lg p-2.5 text-xs text-white focus:outline-none placeholder:text-slate-500 ${
+                  otherRolesError
+                    ? "border-rose-500 focus:border-rose-400"
+                    : "border-slate-700 focus:border-emerald-500"
+                }`}
               />
+              {otherRolesError ? (
+                <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-[11px] text-rose-400 flex items-start gap-1.5 leading-relaxed flex-1 min-w-[220px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span>{otherRolesError}</span>
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isExporting}
+                    onClick={() => performExport(true)}
+                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 font-semibold rounded-lg text-[11px] transition cursor-pointer shrink-0"
+                  >
+                    Ignore and export anyway
+                  </button>
+                </div>
+              ) : (
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  If included, briefly describe what you did in each role rather than just listing role titles.
+                </span>
+              )}
             </div>
 
             <div>
@@ -472,7 +630,7 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
           </div>
 
           {/* Submit Footer */}
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
+          <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -480,6 +638,16 @@ export const ApplicationMemoModal: React.FC<ApplicationMemoModalProps> = ({
             >
               Cancel
             </button>
+            {otherRolesError && (
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => performExport(true)}
+                className="px-4 py-2 text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 rounded-lg transition cursor-pointer"
+              >
+                Ignore and export anyway
+              </button>
+            )}
             <button
               type="submit"
               disabled={isExporting}
