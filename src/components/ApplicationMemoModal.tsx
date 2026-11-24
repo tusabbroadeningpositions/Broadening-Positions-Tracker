@@ -108,7 +108,7 @@ export function validateOtherRolesDescription(input: string): string | null {
   const hasKnownDutyVerb = ACTION_OR_DUTY_VERB_REGEX.test(withoutIntro);
 
   // Check for other regular past-tense/gerund verbs not in the role-title allowlist
-  const candidateInflected = withoutIntro.match(/\b[a-z]{4,}(?:ed|ing)\b/gi) || [];
+  const candidateInflected: string[] = withoutIntro.match(/\b[a-z]{4,}(?:ed|ing)\b/gi) ?? [];
   const hasOtherActionVerb = candidateInflected.some(
     (w) => !TITLE_NOUNS_ENDING_IN_ING_OR_ED.has(w.toLowerCase())
   );

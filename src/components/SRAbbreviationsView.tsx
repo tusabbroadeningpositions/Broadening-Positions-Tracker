@@ -151,7 +151,12 @@ export default function SRAbbreviationsView({
       doc.text("Applied Filters: All Shops & Positions", 10, 26);
     }
 
-    const headers = ["Tier", "Shop / Category", "Position Title", "SR Abbreviation"];
+    const headers = [
+      "Tier",
+      "Shop / Category",
+      "Position Title\n(Areas of Special Emphasis)",
+      "SR Abbreviation\n(SR recommended Successive and Broadening Assignments)",
+    ];
     const tableData = uniquePositions.map((p) => [
       p.tierLevel !== null ? `Tier ${p.tierLevel}` : "Non-Tiered",
       p.category,
@@ -179,8 +184,8 @@ export default function SRAbbreviationsView({
       columnStyles: {
         0: { cellWidth: 22 },
         1: { cellWidth: 28 },
-        2: { cellWidth: 100 },
-        3: { cellWidth: 40, fontStyle: "bold" },
+        2: { cellWidth: 85 },
+        3: { cellWidth: 55, fontStyle: "bold" },
       },
       margin: { top: 30, left: 10, right: 10, bottom: 15 },
     });
@@ -283,8 +288,18 @@ export default function SRAbbreviationsView({
               <tr>
                 <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-28">Tier</th>
                 <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-28">Shop</th>
-                <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider">Position Title</th>
-                <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-60">Senior Rater Abbreviation</th>
+                <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider">
+                  <div>Position Title</div>
+                  <div className="text-[9px] font-medium normal-case tracking-normal text-slate-400 mt-0.5">
+                    (Areas of Special Emphasis)
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-72">
+                  <div>Senior Rater Abbreviation</div>
+                  <div className="text-[9px] font-medium normal-case tracking-normal text-slate-400 mt-0.5">
+                    (SR recommended Successive and Broadening Assignments)
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
